@@ -1,4 +1,14 @@
-# Notes
+# Experimental Cython branch of libpd
+
+## Objectives
+
+- more pythonic object oriented api to libpd than swig-generated pylibpd
+
+- integration with portaudio
+
+- should be easy to use in ipython for scripting puredata
+
+- should be perform without observable audio artifacts
 
 
 
