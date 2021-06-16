@@ -2,13 +2,21 @@
 
 ## Objectives
 
-- more pythonic object oriented api to libpd than swig-generated pylibpd
+- Provide an alternative to the swig-based pylibpd
 
-- integration with portaudio
+- Builtin ntegration with `portaudio`
 
-- should be easy to use in ipython for scripting puredata
+- Should be easy to use in ipython for scripting puredata
 
-- should be perform without observable audio artifacts
+- Should be perform without observable audio artifacts
+
+
+
+## Requirements
+
+- `portaudio` -- to be installed system-wide
+  - on macOS: `brew install portaudio`
+  - on debian-derived linux: 'apt install portaudio'
 
 
 
@@ -30,23 +38,4 @@ Below are the steps to writing a PortAudio application using the callback techni
 
 
 
-
-## PD Messages
-
-
-structure of message:
-
-[selector [element1, element2, ..., elementN];]
-
-
-Atomic Messages:
-
-- [bang]
-- [float 1.21] or [f 1.212]
-- [symbol <word>]
-- [list <a,b,...,c>]
-
-+
-
-other messages
 

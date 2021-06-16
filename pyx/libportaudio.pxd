@@ -1,8 +1,7 @@
 ## ----------------------------------------------------------
 ## Portaudio
 
-
-cdef extern from "../portaudio/portaudio.h":
+cdef extern from "portaudio.h":
     int Pa_GetVersion()
     ctypedef unsigned long PaStreamCallbackFlags
     cdef struct PaStreamCallbackTimeInfo

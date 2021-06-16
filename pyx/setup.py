@@ -1,6 +1,7 @@
 import os
 from distutils.core import setup
 from distutils.extension import Extension
+
 from Cython.Build import cythonize
 
 os.environ['LDFLAGS'] = " ".join([
@@ -25,18 +26,16 @@ extensions = [
             "../libpd_wrapper",
             "../libpd_wrapper/util",
             "../pure-data/src",
-            "./portaudio",
         ],
         libraries = [
             'm',
             'dl',
-            'pthread'
+            'pthread',
+            'portaudio', # requires portaudio to be installed system-wide
         ],
         library_dirs=['../libs'],
         extra_objects=[
             '../libs/libpd.a',
-            "./portaudio/libportaudio.a",
-
         ],
     ),
 ]
@@ -47,10 +46,5 @@ setup(
     ext_modules=cythonize(extensions, 
         compiler_directives={
             'language_level' : '3',
-            # 'overflowcheck': True,
-            # 'boundscheck': True,
-            # 'wraparound': False,
-            # 'cdivision': True,
-
         }),
 )
