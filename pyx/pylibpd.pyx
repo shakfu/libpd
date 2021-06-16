@@ -1,3 +1,5 @@
+# experiment to translate pylibpd swig api to cython api
+
 cimport libpd as _pylibpd
 cimport cpython
 

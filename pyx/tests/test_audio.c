@@ -110,7 +110,7 @@ int main(int argc, char** argv)
 
     //open patch[;pd open file  folder(
     void *handle;
-    handle = libpd_openfile("test.pd", "./");
+    handle = libpd_openfile("tests/pd/test.pd", "./");
 
 
     PaStream *  stream; //opens the audio stream
