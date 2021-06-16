@@ -2,6 +2,7 @@ import pyaudio
 import pylibpd
 from pylibpd import *
 
+
 class Patch:
     def __init__(self, path, channels=1, sample_rate=44800, 
                  has_input=True, has_output=True, 
@@ -28,8 +29,8 @@ class Patch:
             output = self.has_output,
             frames_per_buffer = self.block_size * self.ticks_per_bar)
 
-        mgr = pylibpd.PdManager(inch=self.channels, outch=self.channels, 
-                                srate=self.sample_rate, ticks=1)
+        mgr = pylibpd.PdManager(inChannels=self.channels, outChannels=self.channels, 
+                                sampleRate=self.sample_rate, ticks=1)
 
         pylibpd.libpd_open_patch(path)
 
@@ -48,6 +49,3 @@ class Patch:
 if __name__ == '__main__':
     p = Patch('mytest.pd')
     p.open()
-
-
-
