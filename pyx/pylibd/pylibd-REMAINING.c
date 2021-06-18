@@ -78,6 +78,7 @@ static PyObject *convertArgs(const char *recv, const char *symbol, int n,
     return result;
 }
 
+
 static PyObject *print_callback = NULL;
 static int libpd_set_print_callback(PyObject *callback) {
     Py_XDECREF(print_callback);
@@ -98,6 +99,8 @@ static void pylibpd_print(const char *s) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *bang_callback = NULL;
 static int libpd_set_bang_callback(PyObject *callback) {
     Py_XDECREF(bang_callback);
@@ -118,6 +121,8 @@ static void pylibpd_bang(const char *recv) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *float_callback = NULL;
 static int libpd_set_float_callback(PyObject *callback) {
     Py_XDECREF(float_callback);
@@ -138,6 +143,8 @@ static void pylibpd_float(const char *recv, float x) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *symbol_callback = NULL;
 static int libpd_set_symbol_callback(PyObject *callback) {
     Py_XDECREF(symbol_callback);
@@ -158,6 +165,8 @@ static void pylibpd_symbol(const char *recv, const char *symbol) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *list_callback = NULL;
 static int libpd_set_list_callback(PyObject *callback) {
     Py_XDECREF(list_callback);
@@ -178,6 +187,8 @@ static void pylibpd_list(const char *recv, int n, t_atom *pd_args) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *message_callback = NULL;
 static int libpd_set_message_callback(PyObject *callback) {
     Py_XDECREF(message_callback);
@@ -199,6 +210,8 @@ static void pylibpd_message(const char *recv, const char *symbol, int n,
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *noteon_callback = NULL;
 static int libpd_set_noteon_callback(PyObject *callback) {
     Py_XDECREF(noteon_callback);
@@ -219,6 +232,8 @@ static void pylibpd_noteon(int channel, int pitch, int velocity) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *controlchange_callback = NULL;
 static int libpd_set_controlchange_callback(PyObject *callback) {
     Py_XDECREF(controlchange_callback);
@@ -240,6 +255,8 @@ static void pylibpd_controlchange(int channel, int controller, int velocity) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *programchange_callback = NULL;
 static int libpd_set_programchange_callback(PyObject *callback) {
     Py_XDECREF(programchange_callback);
@@ -260,6 +277,8 @@ static void pylibpd_programchange(int channel, int value) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *pitchbend_callback = NULL;
 static int libpd_set_pitchbend_callback(PyObject *callback) {
     Py_XDECREF(pitchbend_callback);
@@ -280,6 +299,8 @@ static void pylibpd_pitchbend(int channel, int value) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *aftertouch_callback = NULL;
 static int libpd_set_aftertouch_callback(PyObject *callback) {
     Py_XDECREF(aftertouch_callback);
@@ -300,6 +321,8 @@ static void pylibpd_aftertouch(int channel, int velocity) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *polyaftertouch_callback = NULL;
 static int libpd_set_polyaftertouch_callback(PyObject *callback) {
     Py_XDECREF(polyaftertouch_callback);
@@ -320,6 +343,8 @@ static void pylibpd_polyaftertouch(int channel, int pitch, int velocity) {
         Py_DECREF(pyargs);
     }
 }
+
+
 static PyObject *midibyte_callback = NULL;
 static int libpd_set_midibyte_callback(PyObject *callback) {
     Py_XDECREF(midibyte_callback);

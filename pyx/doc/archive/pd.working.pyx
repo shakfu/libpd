@@ -3,13 +3,8 @@ cimport libportaudio
 from cpython cimport array
 
 from libc.stdio cimport printf, fprintf, stderr, FILE
-from posix.unistd cimport sleep # make it time.sleep?
-
 # from libc.string cimport strcpy, strlen
 # from libc.stdlib cimport malloc
-
-# import time
-
 
 DEF N_TICKS = 1
 DEF SAMPLE_RATE = 44100
@@ -65,31 +60,17 @@ cdef void pdprint(const char *s):
 
 
 
-cdef class Patch:
-    cdef readonly str name
-    cdef readonly str dir
-    cdef readonly int sample_rate
-    cdef readonly int blocksize
-    cdef readonly int ticks
-    cdef readonly int in_channels
-    cdef readonly int out_channels
+cdef class PatchManager:
+    #-------------------------------------------------------------------------
+    # Initialization
 
-    def __cinit__(self, str name, str dir='.', 
-            int sample_rate=SAMPLE_RATE, int ticks=N_TICKS, int blocksize=BLOCKSIZE,
-            int in_channels=CHANNELS_IN, int out_channels=CHANNELS_OUT):
-        # self.name = name.encode('UTF-8')
-        # self.dir = dir.encode('UTF-8')
-        self.name = name
-        self.dir = dir
-        self.blocksize = blocksize
-        self.sample_rate = sample_rate
-        self.ticks = ticks
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-
-    def play(self):
+    def main(self):
 
         print("portaudio version: ", libportaudio.Pa_GetVersion())
+
+        # init pd
+        cdef int srate = self.sample_rate
+        cdef int blcksize = self.blocksize()
 
         # init audio
         cdef libportaudio.PaStream *stream # opens the audio stream
@@ -107,14 +88,14 @@ cdef class Patch:
         ## APP-SPECIFIC START 
 
         # open patch
-        handle = self.openfile(self.name.encode('utf8'), self.dir.encode('utf8'))
+        handle = self.openfile(self.name, self.dir)
         # self.handle is assigned here
         
         ## APP-SPECIFIC END         
         ##---------------------------------------------------------------
 
         # Initialize our data for use by callback.
-        for i in range(self.blocksize):
+        for i in range(blcksize):
             data.outbuf[i] = 0
         
         # Initialize library before making any other calls.
@@ -129,7 +110,7 @@ cdef class Patch:
             self.out_channels,       # output channels
             libportaudio.paFloat32,  # 32 bit floating point output
             self.sample_rate,
-            <long>self.blocksize,    # frames per buffer
+            <long>blcksize,          # frames per buffer
             audio_callback,
             &data)
         if (err != libportaudio.paNoError):
@@ -144,11 +125,7 @@ cdef class Patch:
         # -----------------------------------------------------------------
         # RUN HERE
 
-        # self.run()
-        self.dsp()
-        sleep(4)
-        self.dsp(0)
-
+        self.run()
 
         # -----------------------------------------------------------------
 
@@ -161,13 +138,9 @@ cdef class Patch:
             self.terminate(err, handle)
 
         libportaudio.Pa_Terminate()
-        print(f"Ending Patch session: {err}")
+        print(f"Ending PatchManager session: {err}")
 
         return err
-
-
-    #-------------------------------------------------------------------------
-    # Initialization
 
     cdef terminate(self, libportaudio.PaError err, void *handle):
         libportaudio.Pa_Terminate()
@@ -226,7 +199,7 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Audio processing
 
-    def get_blocksize(self):
+    def blocksize(self):
         """return pd's fixed block size
 
         the number of sample frames per 1 pd tick
@@ -808,4 +781,23 @@ cdef class Patch:
 
         libpd.libpd_set_verbose(verbose)
 
+
+import time
+
+class Patch(PatchManager):
+    def __init__(self, str name, str dir='.', 
+            int sample_rate=SAMPLE_RATE, int ticks=N_TICKS,
+            int in_channels=CHANNELS_IN, int out_channels=CHANNELS_OUT):
+        self.name = name.encode('UTF-8')
+        self.dir = dir.encode('UTF-8')
+        self.sample_rate = sample_rate
+        self.ticks = ticks
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+    def run(self):
+        # from IPython import embed; embed(colors="neutral")
+        self.dsp()
+        time.sleep(4)
+        self.dsp(0)
 
