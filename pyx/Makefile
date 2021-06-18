@@ -17,7 +17,7 @@ audio_test:
 
 
 test:
-	@python3 ./tests/test_pd_audio.py
+	@python3 ./tests/test_pd_play.py
 
 clean:
 	@rm -f pd.*.so

@@ -13,5 +13,5 @@ if __name__ == '__main__':
     else:
         pdfile = sys.argv[1]
     print(f'pdfile: {pdfile}')    
-    p = pd.Patch(pdfile)
+    p = pd.Patch(pdfile, 'tests/pd')
     p.main()
