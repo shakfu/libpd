@@ -3,12 +3,11 @@ cimport libportaudio
 from cpython cimport array
 
 from libc.stdio cimport printf, fprintf, stderr, FILE
-from posix.unistd cimport sleep # make it time.sleep?
+from posix.unistd cimport sleep
 
 # from libc.string cimport strcpy, strlen
 # from libc.stdlib cimport malloc
 
-# import time
 
 
 DEF N_TICKS = 1
@@ -34,10 +33,10 @@ cdef UserAudioData data
 
 
 cdef int audio_callback(const void *inputBuffer, void *outputBuffer,
-    unsigned long framesPerBuffer,
-    const libportaudio.PaStreamCallbackTimeInfo* timeInfo,
-    libportaudio.PaStreamCallbackFlags statusFlags,
-    void *userData ):
+                        unsigned long framesPerBuffer,
+                        const libportaudio.PaStreamCallbackTimeInfo* timeInfo,
+                        libportaudio.PaStreamCallbackFlags statusFlags,
+                        void *userData ) nogil:
     """Called by the PortAudio engine when audio is needed.
     
     It may called at interrupt level on some machines so don't do anything
@@ -61,7 +60,7 @@ cdef int audio_callback(const void *inputBuffer, void *outputBuffer,
 
 # use with libpd_printhook to print to console
 cdef void pdprint(const char *s):
-    printf("%s", s)
+    printf("><> %s", s)
 
 
 

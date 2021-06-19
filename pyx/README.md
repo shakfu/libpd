@@ -8,7 +8,7 @@
 
 - Should be easy to use in ipython for scripting puredata
 
-- Should be perform without observable audio artifacts
+- Should perform without observable audio artifacts
 
 
 

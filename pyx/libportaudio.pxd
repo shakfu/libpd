@@ -30,22 +30,22 @@ cdef extern from "portaudio.h":
         double sampleRate,
         unsigned long framesPerBuffer,
         PaStreamCallback *streamCallback,
-        void *userData)
+        void *userData) nogil
     # Commences audio processing.
-    cdef PaError Pa_StartStream(PaStream *stream)
+    cdef PaError Pa_StartStream(PaStream *stream) nogil
 
     # Terminates audio processing. It waits until all pending
     # audio buffers have been played before it returns.
-    cdef PaError Pa_StopStream(PaStream *stream)
+    cdef PaError Pa_StopStream(PaStream *stream) nogil
 
     # Terminates audio processing immediately without waiting for pending
     # buffers to complete.
-    cdef PaError Pa_AbortStream(PaStream *stream)
+    cdef PaError Pa_AbortStream(PaStream *stream) nogil
 
     # Closes an audio stream. If the audio stream is active it
     # discards any pending buffers as if Pa_AbortStream() had been called.
 
-    cdef PaError Pa_CloseStream( PaStream *stream )
+    cdef PaError Pa_CloseStream( PaStream *stream ) nogil
 
 
     # Put the caller to sleep for at least 'msec' milliseconds. This function is

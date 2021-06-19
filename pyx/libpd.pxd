@@ -27,12 +27,12 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
 
     int libpd_blocksize()
     int libpd_init_audio(int inChannels, int outChannels, int sampleRate)
-    int libpd_process_float(const int ticks, const float *inBuffer, float *outBuffer)
-    int libpd_process_short(const int ticks, const short *inBuffer, short *outBuffer)
-    int libpd_process_double(const int ticks, const double *inBuffer, double *outBuffer)
-    int libpd_process_raw(const float *inBuffer, float *outBuffer)
-    int libpd_process_raw_short(const short *inBuffer, short *outBuffer)
-    int libpd_process_raw_double(const double *inBuffer, double *outBuffer)
+    int libpd_process_float(const int ticks, const float *inBuffer, float *outBuffer) nogil
+    int libpd_process_short(const int ticks, const short *inBuffer, short *outBuffer) nogil
+    int libpd_process_double(const int ticks, const double *inBuffer, double *outBuffer) nogil
+    int libpd_process_raw(const float *inBuffer, float *outBuffer) nogil
+    int libpd_process_raw_short(const short *inBuffer, short *outBuffer) nogil
+    int libpd_process_raw_double(const double *inBuffer, double *outBuffer) nogil
 
 ## array access
 

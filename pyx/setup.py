@@ -46,5 +46,10 @@ setup(
     ext_modules=cythonize(extensions, 
         compiler_directives={
             'language_level' : '3',
+            'embedsignature': True,
+            # 'cdivision': True,      # use C division instead of Python
+            # 'boundscheck': True,    # check arrays boundaries
+            # 'wraparound': False,    # allow negative indexes to fetch the end of an array
+
         }),
 )
