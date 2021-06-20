@@ -1,11 +1,16 @@
 
 # BREW_PORTAUDIO_STATIC="/usr/local/opt/portaudio/lib/libportaudio.a"
 
-all: extension
+all: pd
 
-extension:
+pd:
 	@python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./pd.c
+
+
+libpd:
+	@python3 setup_libpd.py build_ext --inplace	
+	@rm -rf ./build ./libpd.c	
 
 audio_test:
 	@gcc -o test_audio tests/test_audio.c ../libs/libpd.a \
@@ -20,5 +25,5 @@ test:
 	@python3 ./tests/test_pd_play.py
 
 clean:
-	@rm -f pd.*.so
+	@rm -f *.so
 	@rm -f test_audio

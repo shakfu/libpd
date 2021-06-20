@@ -164,9 +164,8 @@ cdef class Patch:
 
         return err
 
-
     #-------------------------------------------------------------------------
-    # Initialization
+    # Termination
 
     cdef terminate(self, libportaudio.PaError err, void *handle):
         libportaudio.Pa_Terminate()
@@ -174,6 +173,10 @@ cdef class Patch:
         fprintf(stderr, "Error number: %d\n", err)
         fprintf(stderr, "Error message: %s\n", libportaudio.Pa_GetErrorText(err))
         libpd.libpd_closefile(handle)
+
+    #-------------------------------------------------------------------------
+    # Initialization
+
 
     def init(self):
         """initialize libpd
@@ -722,14 +725,23 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Gui
 
-    cdef int start_gui(self, char *path):
+    def start_gui(self, str path):
         """open the current patches within a pd vanilla GUI
 
         requires the path to pd's main folder that contains bin/, tcl/, etc
         for a macOS .app bundle: /path/to/Pd-#.#-#.app/Contents/Resources
         returns 0 on success
         """
-        return libpd.libpd_start_gui(path)
+        return libpd.libpd_start_gui(path.encode('utf8'))
+
+    # cdef int start_gui(self, char *path):
+    #     """open the current patches within a pd vanilla GUI
+
+    #     requires the path to pd's main folder that contains bin/, tcl/, etc
+    #     for a macOS .app bundle: /path/to/Pd-#.#-#.app/Contents/Resources
+    #     returns 0 on success
+    #     """
+    #     return libpd.libpd_start_gui(path)
 
     cdef void stop_gui(self):
         """stop the pd vanilla GUI"""

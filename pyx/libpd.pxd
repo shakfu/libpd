@@ -2,11 +2,40 @@ cdef extern from "../pure-data/src/m_pd.h":
     """
     #undef T_OBJECT
     """
-    cdef struct _atom
-    ctypedef _atom t_atom
 
-    cdef struct _pdinstance
-    ctypedef _pdinstance t_pdinstance
+    ctypedef struct t_atom
+    ctypedef struct t_pdinstance
+    ctypedef struct t_symbol
+    ctypedef float t_float
+    ctypedef float t_floatarg
+    ctypedef float t_sample
+    ctypedef long t_int
+
+    void SETFLOAT "set_float" (t_atom *atom, float f)
+    void SETSYMBOL "set_symbol" (t_atom *atom, char *s)
+
+    # conversion
+    t_float atom_getfloat(const t_atom *a)
+    t_int atom_getint(const t_atom *a)
+    t_symbol *atom_getsymbol(const t_atom *a)
+    t_symbol *atom_gensym(const t_atom *a)
+    t_float atom_getfloatarg(int which, int argc, const t_atom *argv)
+    t_int atom_getintarg(int which, int argc, const t_atom *argv)
+    t_symbol *atom_getsymbolarg(int which, int argc, const t_atom *argv)
+    void atom_string(const t_atom *a, char *buf, unsigned int bufsize)
+
+    # # printing -> causes crash
+    # void post(const char *fmt, ...)
+    # void startpost(const char *fmt, ...)
+    # void poststring(const char *s)
+    # void postfloat(t_floatarg f)
+    # void postatom(int argc, const t_atom *argv)
+    # void endpost()
+    # void error(const char *fmt, ...)
+    # void verbose(int level, const char *fmt, ...)
+    # void bug(const char *fmt, ...)
+    # void pd_error(const void *object, const char *fmt, ...)
+    # void logpost(const void *object, const int level, const char *fmt, ...)
 
 
 cdef extern from "../libpd_wrapper/z_libpd.h":
