@@ -13,10 +13,11 @@ libpd:
 	@rm -rf ./build ./libpd.c	
 
 audio_test:
+	@echo "testing portaudio c implementation"
 	@gcc -o test_audio tests/test_audio.c ../libs/libpd.a \
-	-framework CoreServices -framework CoreFoundation \
-	-framework AudioUnit -framework AudioToolbox -framework CoreAudio \
-	-I ../pure-data/src -I ../libpd_wrapper -I ../libpd_wrapper/util -lportaudio
+		-framework CoreServices -framework CoreFoundation \
+		-framework AudioUnit -framework AudioToolbox -framework CoreAudio \
+		-I ../pure-data/src -I ../libpd_wrapper -I ../libpd_wrapper/util -lportaudio
 
 .PHONY: test clean
 

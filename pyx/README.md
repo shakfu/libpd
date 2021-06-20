@@ -37,11 +37,10 @@ Both variation can generate sound from a pd patch via an embedded use of the `po
 
 ## Notes
 
-- in `samples/c/pdtest_gui`, the makefile doesn't build, but using the following works:
+- In `samples/c/pdtest_gui`, the makefile doesn't build, but using the following works:
 
 ```bash
 gcc -I/usr/local/include/libpd -o pdtest_gui pdtest_gui.c -lpd
-
 ```
 
 
