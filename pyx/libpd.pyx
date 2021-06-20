@@ -9,7 +9,6 @@ from posix.unistd cimport sleep
 # from libc.stdlib cimport malloc
 
 
-
 DEF N_TICKS = 1
 DEF SAMPLE_RATE = 44100
 DEF CHANNELS_IN = 1
@@ -39,7 +38,7 @@ cdef int audio_callback(const void *inputBuffer, void *outputBuffer,
                         void *userData ) nogil:
     """Called by the PortAudio engine when audio is needed.
     
-    It may called at interrupt level on some machines so don't do anything
+    May called at interrupt level on some machines so don't do anything
     that could mess up the system like calling malloc() or free().
     """
     # Cast data passed through stream to our structure.
@@ -75,8 +74,8 @@ def dsp(on=True):
 
 
 
-def play(str name, str dir='.', 
-        int sample_rate=SAMPLE_RATE, int ticks=N_TICKS, int blocksize=BLOCKSIZE,
+def play(str name, str dir='.', int sample_rate=SAMPLE_RATE, 
+        int ticks=N_TICKS, int blocksize=BLOCKSIZE,
         int in_channels=CHANNELS_IN, int out_channels=CHANNELS_OUT):
 
     print("portaudio version: ", libportaudio.Pa_GetVersion())
@@ -92,17 +91,10 @@ def play(str name, str dir='.',
     init()
     init_audio(in_channels, out_channels, sample_rate) #one channel in, one channel out
 
-
-    ##---------------------------------------------------------------
-    ## APP-SPECIFIC START 
-
     # open patch
     handle = openfile(name.encode('utf8'), dir.encode('utf8'))
     # handle is assigned here
     
-    ## APP-SPECIFIC END         
-    ##---------------------------------------------------------------
-
     # Initialize our data for use by callback.
     for i in range(blocksize):
         data.outbuf[i] = 0
@@ -115,11 +107,11 @@ def play(str name, str dir='.',
     # Open an audio I/O stream.
     err = libportaudio.Pa_OpenDefaultStream(
         &stream,
-        in_channels,        # input channels
-        out_channels,       # output channels
-        libportaudio.paFloat32,  # 32 bit floating point output
-        sample_rate,
-        <long>blocksize,    # frames per buffer
+        in_channels,            # input channels
+        out_channels,           # output channels
+        libportaudio.paFloat32, # 32 bit floating point output
+        sample_rate,            # sample rate
+        <long>blocksize,        # frames per buffer
         audio_callback,
         &data)
     if (err != libportaudio.paNoError):
@@ -131,15 +123,10 @@ def play(str name, str dir='.',
 
     libportaudio.Pa_Sleep(PRERUN_SLEEP)
 
-    # -----------------------------------------------------------------
-    # RUN HERE
-
+    # pd dsp on
     dsp()
     sleep(4)
     dsp(0)
-
-
-    # -----------------------------------------------------------------
 
     err = libportaudio.Pa_StopStream(stream)
     if err != libportaudio.paNoError:
@@ -206,11 +193,13 @@ cdef void *openfile(const char *name, const char *dir):
 
 cdef void closefile(void *p):
     """close the open patch"""
-    # TODO: should add flag to check if file was preveiously opened
+    # TODO: should add flag to check if file was previously opened
     libpd.libpd_closefile(p)
+
 
 cdef int getdollarzero(void *p):
     """get the $0 id of the patch handle pointer
+
     returns $0 value or 0 if the patch is non-existent
     """
     return libpd.libpd_getdollarzero(p)
