@@ -226,7 +226,7 @@ def init_audio(int in_channels, int out_channels, int sample_rate):
         sample_rate)
 
 
-cdef int process_float(const int ticks, const float *inBuffer, float *outBuffer):
+cdef int process_float(const int ticks, const float *inBuffer, float *outBuffer) nogil:
     """process interleaved float samples from inBuffer -> libpd -> outBuffer
 
     buffer sizes are based on # of ticks and channels where:
@@ -236,7 +236,7 @@ cdef int process_float(const int ticks, const float *inBuffer, float *outBuffer)
     return libpd.libpd_process_float(ticks, inBuffer, outBuffer)
 
 
-cdef int process_short(const int ticks, const short *inBuffer, short *outBuffer):
+cdef int process_short(const int ticks, const short *inBuffer, short *outBuffer) nogil:
     """process interleaved short samples from inBuffer -> libpd -> outBuffer
 
     buffer sizes are based on # of ticks and channels where:
@@ -249,7 +249,7 @@ cdef int process_short(const int ticks, const short *inBuffer, short *outBuffer)
     return libpd.libpd_process_short(ticks, inBuffer, outBuffer)
 
 
-cdef int process_double(const int ticks, const double *inBuffer, double *outBuffer):
+cdef int process_double(const int ticks, const double *inBuffer, double *outBuffer) nogil:
     """process interleaved double samples from inBuffer -> libpd -> outBuffer
 
     buffer sizes are based on # of ticks and channels where:
@@ -259,7 +259,7 @@ cdef int process_double(const int ticks, const double *inBuffer, double *outBuff
     return libpd.libpd_process_double(ticks, inBuffer, outBuffer)
 
 
-cdef int process_raw(const float *inBuffer, float *outBuffer):
+cdef int process_raw(const float *inBuffer, float *outBuffer) nogil:
     """process non-interleaved float samples from inBuffer -> libpd -> outBuffer
 
     copies buffer contents to/from libpd without striping
@@ -270,7 +270,7 @@ cdef int process_raw(const float *inBuffer, float *outBuffer):
     return libpd.libpd_process_raw(inBuffer, outBuffer)
 
 
-cdef int process_raw_short(const short *inBuffer, short *outBuffer):
+cdef int process_raw_short(const short *inBuffer, short *outBuffer) nogil:
     """process non-interleaved short samples from inBuffer -> libpd -> outBuffer
 
     copies buffer contents to/from libpd without striping
@@ -284,7 +284,7 @@ cdef int process_raw_short(const short *inBuffer, short *outBuffer):
     return libpd.libpd_process_raw_short(inBuffer, outBuffer)
 
 
-cdef int process_raw_double(const double *inBuffer, double *outBuffer):
+cdef int process_raw_double(const double *inBuffer, double *outBuffer) nogil:
     """process non-interleaved double samples from inBuffer -> libpd -> outBuffer
 
     copies buffer contents to/from libpd without striping

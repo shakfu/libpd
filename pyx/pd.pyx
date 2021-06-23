@@ -247,7 +247,7 @@ cdef class Patch:
             self.sample_rate)
 
 
-    cdef int process_float(self, const int ticks, const float *inBuffer, float *outBuffer):
+    cdef int process_float(self, const int ticks, const float *inBuffer, float *outBuffer) nogil:
         """process interleaved float samples from inBuffer -> libpd -> outBuffer
 
         buffer sizes are based on # of ticks and channels where:
@@ -257,7 +257,7 @@ cdef class Patch:
         return libpd.libpd_process_float(ticks, inBuffer, outBuffer)
 
 
-    cdef int process_short(self, const int ticks, const short *inBuffer, short *outBuffer):
+    cdef int process_short(self, const int ticks, const short *inBuffer, short *outBuffer) nogil:
         """process interleaved short samples from inBuffer -> libpd -> outBuffer
 
         buffer sizes are based on # of ticks and channels where:
@@ -270,7 +270,7 @@ cdef class Patch:
         return libpd.libpd_process_short(ticks, inBuffer, outBuffer)
 
 
-    cdef int process_double(self, const int ticks, const double *inBuffer, double *outBuffer):
+    cdef int process_double(self, const int ticks, const double *inBuffer, double *outBuffer) nogil:
         """process interleaved double samples from inBuffer -> libpd -> outBuffer
 
         buffer sizes are based on # of ticks and channels where:
@@ -280,7 +280,7 @@ cdef class Patch:
         return libpd.libpd_process_double(ticks, inBuffer, outBuffer)
 
 
-    cdef int process_raw(self, const float *inBuffer, float *outBuffer):
+    cdef int process_raw(self, const float *inBuffer, float *outBuffer) nogil:
         """process non-interleaved float samples from inBuffer -> libpd -> outBuffer
 
         copies buffer contents to/from libpd without striping
@@ -291,7 +291,7 @@ cdef class Patch:
         return libpd.libpd_process_raw(inBuffer, outBuffer)
 
 
-    cdef int process_raw_short(self, const short *inBuffer, short *outBuffer):
+    cdef int process_raw_short(self, const short *inBuffer, short *outBuffer) nogil:
         """process non-interleaved short samples from inBuffer -> libpd -> outBuffer
 
         copies buffer contents to/from libpd without striping
@@ -305,7 +305,7 @@ cdef class Patch:
         return libpd.libpd_process_raw_short(inBuffer, outBuffer)
 
 
-    cdef int process_raw_double(self, const double *inBuffer, double *outBuffer):
+    cdef int process_raw_double(self, const double *inBuffer, double *outBuffer) nogil:
         """process non-interleaved double samples from inBuffer -> libpd -> outBuffer
 
         copies buffer contents to/from libpd without striping
