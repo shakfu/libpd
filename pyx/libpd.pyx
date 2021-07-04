@@ -21,75 +21,69 @@ DEF PRERUN_SLEEP = 2000
 
 DEF MAX_ATOMS = 100
 
+
+
 cdef class Atom:
     """A wrapper class for a pure-data t_atom
     """
-    cdef libpd.t_atom *_ptr
-    cdef bint _prt_owner
+    cdef libpd.t_atom *ptr
+    cdef bint ptr_owner
+    cdef int size
 
     def __cinit__(self):
-        self._prt_owner = False
+        self.ptr_owner = False
 
     def __dealloc__(self):
         # De-allocate if not null and flag is set
-        if self._ptr is not NULL and self._prt_owner is True:
-            free(self._ptr)
-            self._ptr = NULL
+        if self.ptr is not NULL and self.ptr_owner is True:
+            free(self.ptr)
+            self.ptr = NULL
 
-    def set_float(self, float f):
-        libpd.SETFLOAT(self._ptr, f)
+    def set_float(self, float f, int idx=0):
+        libpd.set_float(self.ptr+idx, f)
 
-    def get_float(self) -> float:
-        return <float>libpd.atom_getfloat(self._ptr)
-
-    def set_float2(self, float f):
-        libpd.SETFLOAT(self._ptr+1, f)
-
-    def get_float2(self) -> float:
-        return <float>libpd.atom_getfloat(self._ptr+1)
-
+    def get_float(self, int idx=0) -> float:
+        return <float>libpd.atom_getfloat(self.ptr+idx)
 
     # # Extension class properties
     # @property
     # def a(self):
-    #     return self._ptr.a if self._ptr is not NULL else None
+    #     return self.ptr.a if self.ptr is not NULL else None
 
     # @property
     # def b(self):
-    #     return self._ptr.b if self._ptr is not NULL else None
+    #     return self.ptr.b if self.ptr is not NULL else None
 
     @staticmethod
-    cdef Atom from_ptr(libpd.t_atom *_ptr, bint owner=False):
+    cdef Atom from_ptr(libpd.t_atom *ptr, int size, bint owner=False):
         # Call to __new__ bypasses __init__ constructor
         cdef Atom atom = Atom.__new__(Atom)
-        atom._ptr = _ptr
-        atom._prt_owner = owner
+        atom.ptr = ptr
+        atom.ptr_owner = owner
+        atom.size = size
         return atom
 
     @staticmethod
-    cdef Atom new(int n):
+    cdef Atom new(int size):
         #t_atom* at = (t_atom*)malloc(ac * sizeof(t_atom));
-        cdef libpd.t_atom *_atom_ptr = <libpd.t_atom *>malloc(n * sizeof(libpd.t_atom))
-        if _atom_ptr is NULL:
+        cdef libpd.t_atom *ptr = <libpd.t_atom *>malloc(size * sizeof(libpd.t_atom))
+        if ptr is NULL:
             raise MemoryError
-        # _atom_ptr.a = 0
-        # _atom_ptr.b = 0
-        return Atom.from_ptr(_atom_ptr, owner=True)
+        # ptr.a = 0
+        # ptr.b = 0
+        return Atom.from_ptr(ptr, size, owner=True)
 
 
 
 def test_Atom():
     # Atom's static methods can only be called in cython
     atom = Atom.new(10)
-    atom.set_float(5.5)
-    f = atom.get_float()
-    assert f == 5.5
+    floats = [i + 0.5 for i in range(9)]
+    for i, f in enumerate(floats):
+        atom.set_float(f, i)
 
-    atom.set_float2(7.2)
-    f2 = atom.get_float2()
-    # assert f2 == 7.2
-
-    return (f, f2)
+    for i in range(9):
+        print(atom.get_float(i))
 
 
 cdef struct UserAudioData:

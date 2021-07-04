@@ -38,8 +38,8 @@ cdef extern from "../pure-data/src/m_pd.h":
 
 
  
-    void SETFLOAT(t_atom *atom, float f)
-    void SETSYMBOL(t_atom *atom, char *s)
+    # void setfloat "SETFLOAT"(t_atom *atom, float f)
+    # void setsymbol "SETSYMBOL"(t_atom *atom, char *s)
 
     # conversion
     t_float atom_getfloat(const t_atom *a)
@@ -141,6 +141,14 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # returns 0 on success
     int libpd_process_raw_double(const double *inBuffer, double *outBuffer) nogil
 
+## atom access
+
+    # write a float value to the given atom
+    void libpd_set_float(t_atom *a, float x)
+
+    # write a symbol value to the given atom
+    void libpd_set_symbol(t_atom *a, const char *symbol)
+
 ## array access
 
     # get the size of an array by name
@@ -161,8 +169,7 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # note: performs no bounds checking on src
     # returns 0 on success or a negative error code if the array is non-existent
     # or offset + n exceeds range of array
-    int libpd_write_array(const char *name, int offset,
-        const float *src, int n)
+    int libpd_write_array(const char *name, int offset, const float *src, int n)
 
 ## sending messages to pd
 
@@ -217,12 +224,6 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
 
 
 ## sending compound messages: atom array
-
-    # write a float value to the given atom
-    void libpd_set_float(t_atom *a, float x)
-
-    # write a symbol value to the given atom
-    void libpd_set_symbol(t_atom *a, const char *symbol)
 
     # send an atom array of a given length as a list to a destination receiver
     # returns 0 on success or -1 if receiver name is non-existent
