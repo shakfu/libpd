@@ -1,6 +1,7 @@
 cimport libpd
 cimport libportaudio
 from cpython cimport array
+from libc.stdlib cimport malloc, free
 
 from libc.stdio cimport printf, fprintf, stderr, FILE
 from posix.unistd cimport sleep
@@ -17,6 +18,78 @@ DEF BLOCKSIZE = 64
 DEF IN_BUF = CHANNELS_IN * BLOCKSIZE
 DEF OUT_BUF = CHANNELS_OUT * BLOCKSIZE
 DEF PRERUN_SLEEP = 2000
+
+DEF MAX_ATOMS = 100
+
+cdef class Atom:
+    """A wrapper class for a pure-data t_atom
+    """
+    cdef libpd.t_atom *_ptr
+    cdef bint _prt_owner
+
+    def __cinit__(self):
+        self._prt_owner = False
+
+    def __dealloc__(self):
+        # De-allocate if not null and flag is set
+        if self._ptr is not NULL and self._prt_owner is True:
+            free(self._ptr)
+            self._ptr = NULL
+
+    def set_float(self, float f):
+        libpd.SETFLOAT(self._ptr, f)
+
+    def get_float(self) -> float:
+        return <float>libpd.atom_getfloat(self._ptr)
+
+    def set_float2(self, float f):
+        libpd.SETFLOAT(self._ptr+1, f)
+
+    def get_float2(self) -> float:
+        return <float>libpd.atom_getfloat(self._ptr+1)
+
+
+    # # Extension class properties
+    # @property
+    # def a(self):
+    #     return self._ptr.a if self._ptr is not NULL else None
+
+    # @property
+    # def b(self):
+    #     return self._ptr.b if self._ptr is not NULL else None
+
+    @staticmethod
+    cdef Atom from_ptr(libpd.t_atom *_ptr, bint owner=False):
+        # Call to __new__ bypasses __init__ constructor
+        cdef Atom atom = Atom.__new__(Atom)
+        atom._ptr = _ptr
+        atom._prt_owner = owner
+        return atom
+
+    @staticmethod
+    cdef Atom new(int n):
+        #t_atom* at = (t_atom*)malloc(ac * sizeof(t_atom));
+        cdef libpd.t_atom *_atom_ptr = <libpd.t_atom *>malloc(n * sizeof(libpd.t_atom))
+        if _atom_ptr is NULL:
+            raise MemoryError
+        # _atom_ptr.a = 0
+        # _atom_ptr.b = 0
+        return Atom.from_ptr(_atom_ptr, owner=True)
+
+
+
+def test_Atom():
+    # Atom's static methods can only be called in cython
+    atom = Atom.new(10)
+    atom.set_float(5.5)
+    f = atom.get_float()
+    assert f == 5.5
+
+    atom.set_float2(7.2)
+    f2 = atom.get_float2()
+    # assert f2 == 7.2
+
+    return (f, f2)
 
 
 cdef struct UserAudioData:
@@ -104,24 +177,25 @@ def play(str name, str dir='.', int sample_rate=SAMPLE_RATE,
     if err != libportaudio.paNoError:
         terminate(err, handle)
 
-    # Open an audio I/O stream.
-    err = libportaudio.Pa_OpenDefaultStream(
-        &stream,
-        in_channels,            # input channels
-        out_channels,           # output channels
-        libportaudio.paFloat32, # 32 bit floating point output
-        sample_rate,            # sample rate
-        <long>blocksize,        # frames per buffer
-        audio_callback,
-        &data)
-    if (err != libportaudio.paNoError):
-        terminate(err, handle)
+    with nogil:
+        # Open an audio I/O stream.
+        err = libportaudio.Pa_OpenDefaultStream(
+            &stream,
+            in_channels,            # input channels
+            out_channels,           # output channels
+            libportaudio.paFloat32, # 32 bit floating point output
+            sample_rate,            # sample rate
+            <long>blocksize,        # frames per buffer
+            audio_callback,
+            &data)
+        if (err != libportaudio.paNoError):
+            terminate(err, handle)
 
-    err = libportaudio.Pa_StartStream(stream)
-    if (err != libportaudio.paNoError):
-        terminate(err, handle)
+        err = libportaudio.Pa_StartStream(stream)
+        if (err != libportaudio.paNoError):
+            terminate(err, handle)
 
-    libportaudio.Pa_Sleep(PRERUN_SLEEP)
+        libportaudio.Pa_Sleep(PRERUN_SLEEP)
 
     # pd dsp on
     dsp()
@@ -144,7 +218,7 @@ def play(str name, str dir='.', int sample_rate=SAMPLE_RATE,
 #-------------------------------------------------------------------------
 # Termination
 
-cdef terminate(libportaudio.PaError err, void *handle):
+cdef void terminate(libportaudio.PaError err, void *handle) nogil:
     libportaudio.Pa_Terminate()
     fprintf(stderr, "An error occured while using the portaudio stream\n")
     fprintf(stderr, "Error number: %d\n", err)
