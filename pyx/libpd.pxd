@@ -37,9 +37,20 @@ cdef extern from "../pure-data/src/m_pd.h":
     #     union word a_w
 
 
- 
-    # void setfloat "SETFLOAT"(t_atom *atom, float f)
-    # void setsymbol "SETSYMBOL"(t_atom *atom, char *s)
+    # memory mgmt
+    void *getbytes(size_t nbytes)
+    void *getzbytes(size_t nbytes)
+    void *copybytes(const void *src, size_t nbytes)
+    void freebytes(void *x, size_t nbytes)
+    void *resizebytes(void *x, size_t oldsize, size_t newsize)
+
+    # key funcs
+    t_symbol *gensym(const char *s)
+
+
+    # atom ops
+    void SETFLOAT(t_atom *atom, float f)
+    void SETSYMBOL(t_atom *atom, char *s)
 
     # conversion
     t_float atom_getfloat(const t_atom *a)
@@ -141,7 +152,7 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # returns 0 on success
     int libpd_process_raw_double(const double *inBuffer, double *outBuffer) nogil
 
-## atom access
+## atom creation
 
     # write a float value to the given atom
     void libpd_set_float(t_atom *a, float x)

@@ -1,13 +1,11 @@
 cimport libpd
 cimport libportaudio
+
 from cpython cimport array
 from libc.stdlib cimport malloc, free
-
+from libc.string cimport strcpy, strlen
 from libc.stdio cimport printf, fprintf, stderr, FILE
 from posix.unistd cimport sleep
-
-# from libc.string cimport strcpy, strlen
-# from libc.stdlib cimport malloc
 
 
 DEF N_TICKS = 1
@@ -20,6 +18,7 @@ DEF OUT_BUF = CHANNELS_OUT * BLOCKSIZE
 DEF PRERUN_SLEEP = 2000
 
 DEF MAX_ATOMS = 100
+
 
 
 
@@ -40,19 +39,31 @@ cdef class Atom:
             self.ptr = NULL
 
     def set_float(self, float f, int idx=0):
-        libpd.set_float(self.ptr+idx, f)
+        libpd.set_float(self.ptr + idx, f)
 
     def get_float(self, int idx=0) -> float:
-        return <float>libpd.atom_getfloat(self.ptr+idx)
+        return <float>libpd.atom_getfloat(self.ptr + idx)
 
-    # # Extension class properties
-    # @property
-    # def a(self):
-    #     return self.ptr.a if self.ptr is not NULL else None
+    def set_symbol(self, str symbol, int idx=0):
+        libpd.set_symbol(self.ptr + idx, symbol.encode('utf8'))
 
-    # @property
-    # def b(self):
-    #     return self.ptr.b if self.ptr is not NULL else None
+    def get_symbol(self, int idx=0) -> str:
+        return <str>libpd.atom_getsymbol(self.ptr + idx)
+
+    cdef bint is_symbol(self, int idx=0):
+        return (self.ptr + idx).a_type  == A_SYMBOL
+ 
+    cdef bint is_float(self, int idx=0):
+        return (self.ptr + idx).a_type == A_FLOAT
+
+    def to_list(self) -> list:
+        _res = []
+        for i in range(self.size):
+            if self.is_symbol(i):
+                _res.append(self.get_symbol(i))
+            elif self.is_float(i):
+                _res.append(self.get_float(i))
+        return _res
 
     @staticmethod
     cdef Atom from_ptr(libpd.t_atom *ptr, int size, bint owner=False):
@@ -73,17 +84,58 @@ cdef class Atom:
         # ptr.b = 0
         return Atom.from_ptr(ptr, size, owner=True)
 
+    @staticmethod
+    cdef Atom from_list(list lst):
+        cdef char* c_string
+        cdef int size = len(lst)
+        cdef libpd.t_atom *ptr = <libpd.t_atom *>malloc(size * sizeof(libpd.t_atom))
+        # cdef libpd.t_atom *ptr =  <libpd.t_atom *>libpd.getbytes(size * sizeof(libpd.t_atom))
+        if ptr is NULL:
+            raise MemoryError
 
+        cdef int i
+        for i, obj in enumerate(lst):
+            
+            if isinstance(obj, float):
+                libpd.set_float(ptr+i, <float>obj)
+            
+            elif isinstance(obj, int):
+                libpd.set_float(ptr+i, <float>obj)
+
+            # XXX: both crashing!
+
+            # elif isinstance(obj, bytes):
+            #     libpd.set_symbol(ptr+i, obj)
+
+            # elif isinstance(obj, str):
+            #     py_byte_string = obj.encode('UTF-8')
+            #     c_string = py_byte_string
+            #     libpd.set_symbol(ptr+i, c_string)
+
+            else:
+                print("cannot convert:", obj)
+                continue
+
+        return Atom.from_ptr(ptr, size, owner=True)
+
+   # # Extension class properties
+    # @property
+    # def a(self):
+    #     return self.ptr.a if self.ptr is not NULL else None
 
 def test_Atom():
     # Atom's static methods can only be called in cython
-    atom = Atom.new(10)
-    floats = [i + 0.5 for i in range(9)]
-    for i, f in enumerate(floats):
-        atom.set_float(f, i)
+    # atom = Atom.new(10)
+    # floats = [i + 0.5 for i in range(9)]
+    # for i, f in enumerate(floats):
+    #     atom.set_float(f, i)
 
-    for i in range(9):
-        print(atom.get_float(i))
+    # for i in range(9):
+    #     print(atom.get_float(i))
+
+    # a2 = Atom.from_list([1.1, 10, 3, 21.3])
+    a2 = Atom.from_list([1.1, 10, 3, b"hello", "world"])
+    print("a2.to_list:", a2.to_list())
 
 
 cdef struct UserAudioData:
@@ -362,6 +414,66 @@ cdef int process_raw_double(const double *inBuffer, double *outBuffer) nogil:
     """
     return libpd.libpd_process_raw_double(inBuffer, outBuffer)
 
+#-------------------------------------------------------------------------
+# Atom operations
+
+# cdef bint is_symbol(libpd.t_atom *atom):
+#     """Return true if atom is a symbol."""
+#     if atom:
+#         return atom.a_type == A_SYMBOL
+#     else:
+#         return False
+
+# cdef bint is_float(libpd.t_atom *atom):
+#     """Return true if atom is a float."""
+#     if atom:
+#         return atom.a_type == A_FLOAT
+#     else:
+#         return False
+
+cdef bint is_float(libpd.t_atom *a):
+    """check if an atom is a float type: 0 or 1
+
+    note: no NULL check is performed
+    """
+    return libpd.libpd_is_float(a)
+
+cdef bint is_symbol(libpd.t_atom *a):
+    """check if an atom is a symbol type: 0 or 1
+
+    note: no NULL check is performed
+    """
+    return libpd.libpd_is_symbol(a)
+
+cdef void set_float(libpd.t_atom *a, float x):
+    """write a float value to the given atom"""
+    libpd.libpd_set_float(a, x)
+
+cdef float get_float(libpd.t_atom *a):
+    """get the float value of an atom
+
+    note: no NULL or type checks are performed
+    """
+    return libpd.libpd_get_float(a)
+
+cdef void set_symbol(libpd.t_atom *a, const char *symbol):
+    """write a symbol value to the given atom"""
+    libpd.libpd_set_symbol(a, symbol)
+
+cdef const char *get_symbol(libpd.t_atom *a):
+    """get symbol value of an atom
+
+    note: no NULL or type checks are performed
+    """
+    return libpd.libpd_get_symbol(a)
+
+cdef libpd.t_atom *next_atom(libpd.t_atom *a):
+    """increment to the next atom in an atom vector
+
+    returns next atom or NULL, assuming the atom vector is NULL-terminated
+    """
+    return libpd.libpd_next_atom(a)
+
 
 #-------------------------------------------------------------------------
 # Array access
@@ -450,16 +562,9 @@ def add_symbol(symbol):
     cdef bytes _symbol = symbol.encode()
     libpd.libpd_add_symbol(_symbol)
 
+
 #-------------------------------------------------------------------------
 # Sending compound messages: atom array
-
-cdef void set_float(libpd.t_atom *a, float x):
-    """write a float value to the given atom"""
-    libpd.libpd_set_float(a, x)
-
-cdef void set_symbol(libpd.t_atom *a, const char *symbol):
-    """write a symbol value to the given atom"""
-    libpd.libpd_set_symbol(a, symbol)
 
 cdef int send_list(const char *recv, int argc, libpd.t_atom *argv):
     """send an atom array of a given length as a list to a destination receiver
@@ -580,41 +685,6 @@ cdef void set_messagehook(const libpd.t_libpd_messagehook hook):
     note: do not call this while DSP is running
     """
     libpd.libpd_set_messagehook(hook)
-
-cdef int is_float(libpd.t_atom *a):
-    """check if an atom is a float type: 0 or 1
-
-    note: no NULL check is performed
-    """
-    return libpd.libpd_is_float(a)
-
-cdef int is_symbol(libpd.t_atom *a):
-    """check if an atom is a symbol type: 0 or 1
-
-    note: no NULL check is performed
-    """
-    return libpd.libpd_is_symbol(a)
-
-cdef float get_float(libpd.t_atom *a):
-    """get the float value of an atom
-
-    note: no NULL or type checks are performed
-    """
-    return libpd.libpd_get_float(a)
-
-cdef const char *get_symbol(libpd.t_atom *a):
-    """get symbol value of an atom
-
-    note: no NULL or type checks are performed
-    """
-    return libpd.libpd_get_symbol(a)
-
-cdef libpd.t_atom *next_atom(libpd.t_atom *a):
-    """increment to the next atom in an atom vector
-
-    returns next atom or NULL, assuming the atom vector is NULL-terminated
-    """
-    return libpd.libpd_next_atom(a)
 
 #-------------------------------------------------------------------------
 # Sending MIDI messages to pd
