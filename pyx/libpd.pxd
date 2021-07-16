@@ -5,18 +5,23 @@ cdef extern from "../pure-data/src/m_pd.h":
     """
     ctypedef float t_float
     ctypedef struct t_pdinstance
-    ctypedef struct t_symbol
     ctypedef float t_floatarg
     ctypedef float t_sample
     ctypedef long t_int
 
+    ctypedef struct t_symbol:
+        const char *s_name
+        # struct _class **s_thing
+        # struct _symbol *s_next
+
+
     ctypedef union t_word:
         t_float w_float
         t_symbol *w_symbol
-    #     # t_gpointer *w_gpointer
-    #     # t_array *w_array
-    #     # struct _binbuf *w_binbuf
-    #     # int w_index
+        # t_gpointer *w_gpointer
+        # t_array *w_array
+        # struct _binbuf *w_binbuf
+        # int w_index
 
     ctypedef enum t_atomtype:
         A_NULL

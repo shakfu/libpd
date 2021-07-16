@@ -47,8 +47,17 @@ cdef class Atom:
     def set_symbol(self, str symbol, int idx=0):
         libpd.set_symbol(self.ptr + idx, symbol.encode('utf8'))
 
-    def get_symbol(self, int idx=0) -> str:
-        return <str>libpd.atom_getsymbol(self.ptr + idx)
+    cdef t_symbol *get_symbol(self, int idx=0):
+        return libpd.atom_getsymbol(self.ptr + idx)
+
+    def get_string(self, int idx=0) -> str:
+        return (self.get_symbol(idx).s_name).decode()
+
+    # def get_string(self, int idx=0) -> str:
+    #     return <str>(libpd.atom_getsymbol(self.ptr + idx).s_name)
+
+    # def get_symbol(self, int idx=0):
+    #     return libpd.atom_getsymbol(self.ptr + idx)
 
     cdef bint is_symbol(self, int idx=0):
         return (self.ptr + idx).a_type  == A_SYMBOL
@@ -60,10 +69,21 @@ cdef class Atom:
         _res = []
         for i in range(self.size):
             if self.is_symbol(i):
-                _res.append(self.get_symbol(i))
+                _res.append(self.get_string(i))
             elif self.is_float(i):
                 _res.append(self.get_float(i))
         return _res
+
+    def display(self):
+        for i in range(self.size):
+            if self.is_float(i):
+                print("is_float:", i)
+            elif self.is_symbol(i):
+                print("is_symbol:", i)
+                s = self.get_string(i)
+                print("string:", type(s))
+            else:
+                print("other:", i)
 
     @staticmethod
     cdef Atom from_ptr(libpd.t_atom *ptr, int size, bint owner=False):
@@ -87,6 +107,7 @@ cdef class Atom:
     @staticmethod
     cdef Atom from_list(list lst):
         cdef char* c_string
+        # cdef char c_string[5]
         cdef int size = len(lst)
         cdef libpd.t_atom *ptr = <libpd.t_atom *>malloc(size * sizeof(libpd.t_atom))
         # cdef libpd.t_atom *ptr =  <libpd.t_atom *>libpd.getbytes(size * sizeof(libpd.t_atom))
@@ -102,15 +123,11 @@ cdef class Atom:
             elif isinstance(obj, int):
                 libpd.set_float(ptr+i, <float>obj)
 
-            # XXX: both crashing!
+            elif isinstance(obj, bytes):
+                libpd.set_symbol(ptr+i, obj)
 
-            # elif isinstance(obj, bytes):
-            #     libpd.set_symbol(ptr+i, obj)
-
-            # elif isinstance(obj, str):
-            #     py_byte_string = obj.encode('UTF-8')
-            #     c_string = py_byte_string
-            #     libpd.set_symbol(ptr+i, c_string)
+            elif isinstance(obj, str):
+                libpd.set_symbol(ptr+i, obj.encode('UTF-8'))
 
             else:
                 print("cannot convert:", obj)
@@ -118,12 +135,10 @@ cdef class Atom:
 
         return Atom.from_ptr(ptr, size, owner=True)
 
-   # # Extension class properties
-    # @property
-    # def a(self):
-    #     return self.ptr.a if self.ptr is not NULL else None
 
 def test_Atom():
+    # IMPORTANT: MUST CALL libpd_init() before libpd_set_symbol or crash!
+    libpd_init()
     # Atom's static methods can only be called in cython
     # atom = Atom.new(10)
     # floats = [i + 0.5 for i in range(9)]
@@ -133,7 +148,6 @@ def test_Atom():
     # for i in range(9):
     #     print(atom.get_float(i))
 
-    # a2 = Atom.from_list([1.1, 10, 3, 21.3])
     a2 = Atom.from_list([1.1, 10, 3, b"hello", "world"])
     print("a2.to_list:", a2.to_list())
 
@@ -457,7 +471,10 @@ cdef float get_float(libpd.t_atom *a):
     return libpd.libpd_get_float(a)
 
 cdef void set_symbol(libpd.t_atom *a, const char *symbol):
-    """write a symbol value to the given atom"""
+    """write a symbol value to the given atom.
+
+    requires that libpd_init has already been called.
+    """
     libpd.libpd_set_symbol(a, symbol)
 
 cdef const char *get_symbol(libpd.t_atom *a):
