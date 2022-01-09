@@ -23,6 +23,7 @@ extensions = [
             ('LIBPD_EXTRA', 1)
         ],
         include_dirs=[
+            "/usr/local/include",
             "../libpd_wrapper",
             "../libpd_wrapper/util",
             "../pure-data/src",
@@ -33,7 +34,10 @@ extensions = [
             'pthread',
             'portaudio', # requires portaudio to be installed system-wide
         ],
-        library_dirs=['../libs'],
+        library_dirs=[
+            '/usr/local/lib',
+            '../libs'
+        ],
         extra_objects=[
             '../libs/libpd.a',
         ],
