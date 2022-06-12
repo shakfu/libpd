@@ -8,8 +8,6 @@ Copyright (c) Peter Brinkmann & the libpd team 2010-2021
 Documentation
 -------------
 
-See our website and book at <http://libpd.cc>
-
 For documentation of libpd, see the wiki: <https://github.com/libpd/libpd/wiki>
 
 If you are using [Processing](http://processing.org), iOS, or Android, see our companion repositories:
@@ -25,7 +23,7 @@ The preferred method to download libpd is to use git.
 
 **Do not download libpd as a zip or tar.gz file from GitHub.**
 
-The "Download zip" button may look like a good idea, but currently Github does not include submodule files when compiling zip files. This means the zip file is missing the main pd source files and you will not be able to build libpd, with errors such as: *No rule to make target pure-data/src/d_arithmetic.o* or *No such file or directory: pure-data/extra/bonk~/bonk~.c*.
+The "Download ZIP" button may look like a good idea, but currently Github does not include submodule files when compiling zip files. This means the zip file is missing the main pd source files and you will not be able to build libpd, with errors such as: *No rule to make target pure-data/src/d_arithmetic.o* or *No such file or directory: pure-data/extra/bonk~/bonk~.c*.
 
 To download libpd & check out the pure-data submodule, do the following:
 
@@ -103,6 +101,7 @@ Makefile options allow for conditional compilation of libpd util and pd extra ex
 * **UTIL=true**: compile utilities in `libpd_wrapper/util` (default)
 * **EXTRA=true**: compile `pure-data/extra` externals which are then inited in libpd_init() (default)
 * **MULTI=true**: compile with multiple instance support
+* **DOUBLE=true**: compile with double-precision support
 * **DEBUG=true**: compile with debug symbols & no optimizations
 * **STATIC=true**: compile static library (in addition to shared library)
 * **FAT_LIB=true**: compile universal "fat" lib with multiple architectures (macOS only)
@@ -187,6 +186,23 @@ Note: For 64 bit Windows, build Pd with the following additional C flags to ensu
     make ADDITIONAL_CFLAGS='-DPD_LONGINTTYPE="long long"'
 
 If you run into strange errors such as `/bin/sh: cc: command not found`, try closing and reopening your shell window before building again.
+
+Double-Precision Support
+------------------------
+
+By default, libpd computes numbers and samples internally as single-precision 32-bit floats. This is fast and good enough for most general usage. If you are working with small numbers beyond 6 decimal points, however, you will need a higher degree of precision.
+
+To enable double-precision 64-bit floating point support, build libpd with `-DPD_FLOATSIZE=64` in the CFLAGS. The libpd makefile provides the `DOUBLE` makefile variable for this:
+
+    make DOUBLE=true
+
+Now utilize the libpd API which use the double type, such as the libpd double hook, `libpd_add_double()`, and `libpd_process_double()`.
+
+To double-check your build, the following will print a 1 if double-precision support is enabled:
+
+```C
+printf("double-precision %d\n", (int)(sizeof(t_float)/8));
+```
 
 C++
 ---
@@ -281,8 +297,8 @@ Install the JDK via your distributions package manager.
 
 Install the JDK either by downloading an installer package or by using one of the open source package managers for macOS:
 
-* homebrew: <https://brew.sh> (recommended)
-* macports: <https://www.macports.org>
+* Homebrew: <https://brew.sh> (recommended)
+* MacPorts: <https://www.macports.org>
 
 ### Windows
 
