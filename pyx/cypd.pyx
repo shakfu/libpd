@@ -40,7 +40,7 @@ cdef int audio_callback(const void *inputBuffer, void *outputBuffer,
                         void *userData ) nogil:
     """Called by the PortAudio engine when audio is needed.
     
-    It may called at interrupt level on some machines so don't do anything
+    It may be called at interrupt level on some machines so don't do anything
     that could mess up the system like calling malloc() or free().
     """
     # Cast data passed through stream to our structure.
@@ -90,6 +90,7 @@ cdef class Patch:
     def play(self):
 
         print("portaudio version: ", libportaudio.Pa_GetVersion())
+        print("pd version: ", self.pd_version())
 
         # init audio
         cdef libportaudio.PaStream *stream # opens the audio stream
@@ -819,5 +820,12 @@ cdef class Patch:
         """set verbose print state: 0 or 1"""
 
         libpd.libpd_set_verbose(verbose)
+
+
+    def pd_version(self) -> str:
+        """returns pd version"""
+        cdef int major, minor, bugfix
+        pd.sys_getversion(&major, &minor, &bugfix)
+        return f'{major}.{minor}.{bugfix}'
 
 

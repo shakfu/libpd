@@ -46,8 +46,7 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # buffer sizes are based on # of ticks and channels where:
     #     size = ticks * libpd_blocksize() * (in/out)channels
     # returns 0 on success
-    int libpd_process_float(const int ticks,
-        const float *inBuffer, float *outBuffer) nogil
+    int libpd_process_float(const int ticks, const float *inBuffer, float *outBuffer) nogil
 
     # process interleaved short samples from inBuffer -> libpd -> outBuffer
     # buffer sizes are based on # of ticks and channels where:
@@ -56,15 +55,13 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # so any values received from pd patches beyond -1 to 1 will result in garbage
     # note: for efficiency, does *not* clip input
     # returns 0 on success
-    int libpd_process_short(const int ticks,
-        const short *inBuffer, short *outBuffer) nogil
+    int libpd_process_short(const int ticks, const short *inBuffer, short *outBuffer) nogil
 
     # process interleaved double samples from inBuffer -> libpd -> outBuffer
     # buffer sizes are based on # of ticks and channels where:
     #     size = ticks * libpd_blocksize() * (in/out)channels
     # returns 0 on success
-    int libpd_process_double(const int ticks,
-        const double *inBuffer, double *outBuffer) nogil
+    int libpd_process_double(const int ticks, const double *inBuffer, double *outBuffer) nogil
 
     # process non-interleaved float samples from inBuffer -> libpd -> outBuffer
     # copies buffer contents to/from libpd without striping
@@ -90,13 +87,6 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # returns 0 on success
     int libpd_process_raw_double(const double *inBuffer, double *outBuffer) nogil
 
-## atom creation
-
-    # write a float value to the given atom
-    void libpd_set_float(pd.t_atom *a, float x)
-
-    # write a symbol value to the given atom
-    void libpd_set_symbol(pd.t_atom *a, const char *symbol)
 
 ## array access
 
@@ -173,6 +163,12 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
 
 
 ## sending compound messages: atom array
+
+    # write a float value to the given atom
+    void libpd_set_float(pd.t_atom *a, float x)
+
+    # write a symbol value to the given atom
+    void libpd_set_symbol(pd.t_atom *a, const char *symbol)
 
     # send an atom array of a given length as a list to a destination receiver
     # returns 0 on success or -1 if receiver name is non-existent

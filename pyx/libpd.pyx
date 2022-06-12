@@ -140,14 +140,14 @@ cdef class Atom:
 def test_Atom():
     # IMPORTANT: MUST CALL libpd_init() before libpd_set_symbol or crash!
     libpd_init()
-    # Atom's static methods can only be called in cython
-    # atom = Atom.new(10)
-    # floats = [i + 0.5 for i in range(9)]
-    # for i, f in enumerate(floats):
-    #     atom.set_float(f, i)
 
-    # for i in range(9):
-    #     print(atom.get_float(i))
+    a1 = Atom.new(10)
+    floats = [i + 0.5 for i in range(9)]
+    for i, f in enumerate(floats):
+        a1.set_float(f, i)
+
+    for i in range(9):
+        print(a1.get_float(i))
 
     a2 = Atom.from_list([1.1, 10, 3, b"hello", "world"])
     print("a2.to_list:", a2.to_list())
@@ -431,20 +431,6 @@ cdef int process_raw_double(const double *inBuffer, double *outBuffer) nogil:
 
 #-------------------------------------------------------------------------
 # Atom operations
-
-# cdef bint is_symbol(pd.t_atom *atom):
-#     """Return true if atom is a symbol."""
-#     if atom:
-#         return atom.a_type == pd.A_SYMBOL
-#     else:
-#         return False
-
-# cdef bint is_float(pd.t_atom *atom):
-#     """Return true if atom is a float."""
-#     if atom:
-#         return atom.a_type == pd.A_FLOAT
-#     else:
-#         return False
 
 cdef bint is_float(pd.t_atom *a):
     """check if an atom is a float type: 0 or 1
