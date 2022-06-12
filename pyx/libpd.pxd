@@ -110,6 +110,22 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # or offset + n exceeds range of array
     int libpd_write_array(const char *name, int offset, const float *src, int n)
 
+    # read n values from named src array and write into dest starting at an offset
+    # note: performs no bounds checking on dest
+    # note: only full-precision when compiled with PD_FLOATSIZE=64
+    # returns 0 on success or a negative error code if the array is non-existent
+    # or offset + n exceeds range of array
+    # double-precision variant of libpd_read_array()
+    int libpd_read_array_double(double *dest, const char *src, int offset, int n)
+
+    # read n values from src and write into named dest array starting at an offset
+    # note: performs no bounds checking on src
+    # note: only full-precision when compiled with PD_FLOATSIZE=64
+    # returns 0 on success or a negative error code if the array is non-existent
+    # or offset + n exceeds range of array
+    # double-precision variant of libpd_write_array()
+    int libpd_write_array_double(const char *dest, int offset, const double *src, int n)
+
 ## sending messages to pd
 
     # send a bang to a destination receiver
@@ -121,6 +137,12 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # ex: libpd_float("foo", 1) will send a 1.0 to [s foo] on the next tick
     # returns 0 on success or -1 if receiver name is non-existent
     int libpd_float(const char *recv, float x)
+    
+    # send a double to a destination receiver
+    # ex: libpd_double("foo", 1.1) will send a 1.1 to [s foo] on the next tick
+    # note: only full-precision when compiled with PD_FLOATSIZE=64
+    # returns 0 on success or -1 if receiver name is non-existent
+    int libpd_double(const char *recv, double x)
 
     # send a symbol to a destination receiver
     # ex: libpd_symbol("foo", "bar") will send "bar" to [s foo] on the next tick
@@ -137,6 +159,10 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
 
     # add a float to the current message in progress
     void libpd_add_float(float x)
+
+    # add a double to the current message in progress
+    # note: only full-precision when compiled with PD_FLOATSIZE=64
+    void libpd_add_double(double x)
 
     # add a symbol to the current message in progress
     void libpd_add_symbol(const char *symbol)
@@ -166,6 +192,10 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
 
     # write a float value to the given atom
     void libpd_set_float(pd.t_atom *a, float x)
+
+    # write a double value to the given atom
+    # note: only full-precision when compiled with PD_FLOATSIZE=64
+    void libpd_set_double(pd.t_atom *v, double x)
 
     # write a symbol value to the given atom
     void libpd_set_symbol(pd.t_atom *a, const char *symbol)
@@ -213,6 +243,10 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
 
     # float receive hook signature, recv is the source receiver name
     ctypedef void (*t_libpd_floathook)(const char *recv, float x)
+
+    # double receive hook signature, recv is the source receiver name
+    # note: only full-precision when compiled with PD_FLOATSIZE=64
+    ctypedef void (*t_libpd_doublehook)(const char *recv, double x)
 
     # symbol receive hook signature, recv is the source receiver name
     ctypedef void (*t_libpd_symbolhook)(const char *recv, const char *symbol)
@@ -266,6 +300,14 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # note: do not call this while DSP is running
     void libpd_set_floathook(const t_libpd_floathook hook)
 
+    # set the double receiver hook, NULL by default
+    # note: avoid calling this while DSP is running
+    # note: you can either have a double receiver hook, or a float receiver
+    #       hook (see above), but not both.
+    #       calling this, will automatically unset the float receiver hook
+    # note: only full-precision when compiled with PD_FLOATSIZE=64
+    void libpd_set_doublehook(const t_libpd_doublehook hook)
+
     # set the symbol receiver hook, NULL by default
     # note: do not call this while DSP is running
     void libpd_set_symbolhook(const t_libpd_symbolhook hook)
@@ -289,6 +331,11 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # get the float value of an atom
     # note: no NULL or type checks are performed
     float libpd_get_float(pd.t_atom *a)
+
+    # returns the double value of an atom
+    # note: no NULL or type checks are performed
+    # note: only full-precision when compiled with PD_FLOATSIZE=64
+    double libpd_get_double(pd.t_atom *a)
 
     # note: no NULL or type checks are performed
     # get symbol value of an atom

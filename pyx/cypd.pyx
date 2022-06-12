@@ -1,3 +1,9 @@
+""" cypd.pyx
+
+An cythoon extension class wrapping libpd in an 'object-orirented' way.
+
+
+"""
 cimport pd
 cimport libpd
 cimport libportaudio

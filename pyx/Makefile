@@ -1,9 +1,9 @@
 
 # BREW_PORTAUDIO_STATIC="/usr/local/opt/portaudio/lib/libportaudio.a"
 
-all: libpd pd
+all: libpd cypd
 
-pd:
+cypd:
 	@python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./cypd.c
 
@@ -35,8 +35,8 @@ minim:
 test_atom: libpd
 	@python3 ./test_atom.py
 
-test: pd
-	@python3 ./tests/test_pd_play.py
+test: cypd
+	@python3 ./tests/test_cypd_audio.py
 
 clean:
 	@rm -f *.so
