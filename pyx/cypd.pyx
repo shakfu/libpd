@@ -73,6 +73,8 @@ cdef class Patch:
     cdef readonly int ticks
     cdef readonly int in_channels
     cdef readonly int out_channels
+    cdef void * handle
+    cdef bint is_open
 
     def __cinit__(self, str name, str dir='.', 
             int sample_rate=SAMPLE_RATE, int ticks=N_TICKS, int blocksize=BLOCKSIZE,
@@ -86,6 +88,8 @@ cdef class Patch:
         self.ticks = ticks
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.handle = NULL
+        self.is_open = False
 
     def play(self):
 
@@ -108,8 +112,7 @@ cdef class Patch:
         ## APP-SPECIFIC START 
 
         # open patch
-        handle = self.openfile(self.name.encode('utf8'), self.dir.encode('utf8'))
-        # self.handle is assigned here
+        self.open()
         
         ## APP-SPECIFIC END         
         ##---------------------------------------------------------------
@@ -121,7 +124,7 @@ cdef class Patch:
         # Initialize library before making any other calls.
         err = libportaudio.Pa_Initialize()
         if err != libportaudio.paNoError:
-            self.terminate(err, handle)
+            self.terminate(err, self.handle)
 
         # Open an audio I/O stream.
         err = libportaudio.Pa_OpenDefaultStream(
@@ -134,11 +137,11 @@ cdef class Patch:
             audio_callback,
             &data)
         if (err != libportaudio.paNoError):
-            self.terminate(err, handle)
+            self.terminate(err, self.handle)
 
         err = libportaudio.Pa_StartStream(stream)
         if (err != libportaudio.paNoError):
-            self.terminate(err, handle)
+            self.terminate(err, self.handle)
 
         libportaudio.Pa_Sleep(PRERUN_SLEEP)
 
@@ -155,14 +158,16 @@ cdef class Patch:
 
         err = libportaudio.Pa_StopStream(stream)
         if err != libportaudio.paNoError:
-            self.terminate(err, handle)
+            self.terminate(err, self.handle)
 
         err = libportaudio.Pa_CloseStream(stream)
         if err != libportaudio.paNoError:
-            self.terminate(err, handle)
+            self.terminate(err, self.handle)
 
         libportaudio.Pa_Terminate()
         print(f"Ending Patch session: {err}")
+
+        self.close()
 
         return err
 
@@ -180,7 +185,7 @@ cdef class Patch:
     # Initialization
 
 
-    def init(self):
+    def init(self) -> int:
         """initialize libpd
 
         It is safe to call this more than once
@@ -197,40 +202,45 @@ cdef class Patch:
         """
         libpd.libpd_clear_search_path()
 
-    def add_to_search_path(self, path):
+    def add_to_search_path(self, path: str):
         """add a path to the libpd search paths
 
         relative paths are relative to the current working directory
         unlike desktop pd, *no* search paths are set by default (ie. extra)
         """
-        cdef bytes _path = path.encode()
-        libpd.libpd_add_to_search_path(_path)
+        libpd.libpd_add_to_search_path(path.encode('utf-8'))
 
     #-------------------------------------------------------------------------
     # Opening patches
 
-    cdef void *openfile(self, const char *name, const char *dir):
-        """open a patch by filename and parent dir path
+    def open(self):
+        """open a patch given filename and parent dir path
 
-        returns an opaque patch handle pointer or NULL on failure
+        Sets an opaque patch handle pointer to self.handle or
+        or raise an IOError.
         """
-        return libpd.libpd_openfile(name, dir)
+        self.handle = libpd.libpd_openfile(
+            self.name.encode('utf-8'), self.dir.encode('utf-8'))
+        if self.handle:
+            self.is_open = True
+        else:
+            raise IOError(f"could not open {self.name}/{self.dir}")
 
-    cdef void closefile(self, void *p):
+    def close(self):
         """close the open patch"""
-        # TODO: should add flag to check if file was preveiously opened
-        libpd.libpd_closefile(p)
+        if self.is_open:
+            libpd.libpd_closefile(self.handle)
 
-    cdef int getdollarzero(self, void *p):
+    def getdollarzero(self) -> int:
         """get the $0 id of the patch handle pointer
         returns $0 value or 0 if the patch is non-existent
         """
-        return libpd.libpd_getdollarzero(p)
+        return libpd.libpd_getdollarzero(self.handle)
 
     #-------------------------------------------------------------------------
     # Audio processing
 
-    def get_blocksize(self):
+    def get_blocksize(self) -> int:
         """return pd's fixed block size
 
         the number of sample frames per 1 pd tick
@@ -238,7 +248,7 @@ cdef class Patch:
         return libpd.libpd_blocksize()
 
 
-    def init_audio(self):
+    def init_audio(self) -> int:
         """initialize audio rendering
 
         returns 0 on success
@@ -249,18 +259,18 @@ cdef class Patch:
             self.sample_rate)
 
 
-    cdef int process_float(self, const int ticks, const float *inBuffer, float *outBuffer) nogil:
-        """process interleaved float samples from inBuffer -> libpd -> outBuffer
+    cdef int process_float(self, const int ticks, const float *in_buffer, float *out_buffer) nogil:
+        """process interleaved float samples from in_buffer -> libpd -> out_buffer
 
         buffer sizes are based on # of ticks and channels where:
             size = ticks * libpd_blocksize() * (in/out)channels
         returns 0 on success
         """
-        return libpd.libpd_process_float(ticks, inBuffer, outBuffer)
+        return libpd.libpd_process_float(ticks, in_buffer, out_buffer)
 
 
-    cdef int process_short(self, const int ticks, const short *inBuffer, short *outBuffer) nogil:
-        """process interleaved short samples from inBuffer -> libpd -> outBuffer
+    cdef int process_short(self, const int ticks, const short *in_buffer, short *out_buffer) nogil:
+        """process interleaved short samples from in_buffer -> libpd -> out_buffer
 
         buffer sizes are based on # of ticks and channels where:
             size = ticks * libpd_blocksize() * (in/out)channels
@@ -269,32 +279,32 @@ cdef class Patch:
         note: for efficiency, does *not* clip input
         returns 0 on success
         """
-        return libpd.libpd_process_short(ticks, inBuffer, outBuffer)
+        return libpd.libpd_process_short(ticks, in_buffer, out_buffer)
 
 
-    cdef int process_double(self, const int ticks, const double *inBuffer, double *outBuffer) nogil:
-        """process interleaved double samples from inBuffer -> libpd -> outBuffer
+    cdef int process_double(self, const int ticks, const double *in_buffer, double *out_buffer) nogil:
+        """process interleaved double samples from in_buffer -> libpd -> out_buffer
 
         buffer sizes are based on # of ticks and channels where:
             size = ticks * libpd_blocksize() * (in/out)channels
         returns 0 on success
         """
-        return libpd.libpd_process_double(ticks, inBuffer, outBuffer)
+        return libpd.libpd_process_double(ticks, in_buffer, out_buffer)
 
 
-    cdef int process_raw(self, const float *inBuffer, float *outBuffer) nogil:
-        """process non-interleaved float samples from inBuffer -> libpd -> outBuffer
+    cdef int process_raw(self, const float *in_buffer, float *out_buffer) nogil:
+        """process non-interleaved float samples from in_buffer -> libpd -> out_buffer
 
         copies buffer contents to/from libpd without striping
         buffer sizes are based on a single tick and # of channels where:
             size = libpd_blocksize() * (in/out)channels
         returns 0 on success
         """
-        return libpd.libpd_process_raw(inBuffer, outBuffer)
+        return libpd.libpd_process_raw(in_buffer, out_buffer)
 
 
-    cdef int process_raw_short(self, const short *inBuffer, short *outBuffer) nogil:
-        """process non-interleaved short samples from inBuffer -> libpd -> outBuffer
+    cdef int process_raw_short(self, const short *in_buffer, short *out_buffer) nogil:
+        """process non-interleaved short samples from in_buffer -> libpd -> out_buffer
 
         copies buffer contents to/from libpd without striping
         buffer sizes are based on a single tick and # of channels where:
@@ -304,37 +314,38 @@ cdef class Patch:
         note: for efficiency, does *not* clip input
         returns 0 on success
         """
-        return libpd.libpd_process_raw_short(inBuffer, outBuffer)
+        return libpd.libpd_process_raw_short(in_buffer, out_buffer)
 
 
-    cdef int process_raw_double(self, const double *inBuffer, double *outBuffer) nogil:
-        """process non-interleaved double samples from inBuffer -> libpd -> outBuffer
+    cdef int process_raw_double(self, const double *in_buffer, double *out_buffer) nogil:
+        """process non-interleaved double samples from in_buffer -> libpd -> out_buffer
 
         copies buffer contents to/from libpd without striping
         buffer sizes are based on a single tick and # of channels where:
             size = libpd_blocksize() * (in/out)channels
         returns 0 on success
         """
-        return libpd.libpd_process_raw_double(inBuffer, outBuffer)
+        return libpd.libpd_process_raw_double(in_buffer, out_buffer)
 
 
     #-------------------------------------------------------------------------
     # Array access
 
-    cdef int array_size(self, const char *name):
+    def array_size(self, name: str) -> int:
         """get the size of an array by name
 
         returns size or negative error code if non-existent
         """
-        return libpd.libpd_arraysize(name)
+        return libpd.libpd_arraysize(name.encode('utf-8'))
 
-    cdef int resize_array(self, const char *name, long size):
+    def resize_array(self, name: str, size: int) -> int:
         """(re)size an array by name sizes <= 0 are clipped to 1
 
         returns 0 on success or negative error code if non-existent
         """
-        return libpd.libpd_resize_array(name, <long>size)
+        return libpd.libpd_resize_array(name.encode('utf-8'), <long>size)
 
+    # TODO: add conversion to and from numpy arrays here
     cdef int read_array(self, float *dest, const char *name, int offset, int n):
         """read n values from named src array and write into dest starting at an offset
 
@@ -356,38 +367,39 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Sending messages to pd
 
-    def send_bang(self, recv):
+    # TODO: is this two step necessary?
+    def send_bang(self, receiver: str) -> int:
         """send a bang to a destination receiver
 
         ex: libpd_bang("foo") will send a bang to [s foo] on the next tick
         returns 0 on success or -1 if receiver name is non-existent
         """
-        cdef bytes _recv = recv.encode()
+        cdef bytes _recv = receiver.encode('utf-8')
         return libpd.libpd_bang(_recv)
 
-    def send_float(self, recv, float x):
+    def send_float(self, receiver: str, f: float) -> int:
         """send a float to a destination receiver
 
         ex: libpd_float("foo", 1) will send a 1.0 to [s foo] on the next tick
         returns 0 on success or -1 if receiver name is non-existent
         """
-        cdef bytes _recv = recv.encode()
-        return libpd.libpd_float(_recv, x)
+        cdef bytes _recv = receiver.encode('utf-8')
+        return libpd.libpd_float(_recv, f)
 
-    def send_symbol(self, recv, symbol):
+    def send_symbol(self, receiver: str, symbol: str) -> int:
         """send a symbol to a destination receiver
 
         ex: libpd_symbol("foo", "bar") will send "bar" to [s foo] on the next tick
         returns 0 on success or -1 if receiver name is non-existent
         """
-        cdef bytes _recv = recv.encode()
-        cdef bytes _symbol = symbol.encode()
+        cdef bytes _recv = receiver.encode('utf-8')
+        cdef bytes _symbol = symbol.encode('utf-8')
         return libpd.libpd_symbol(_recv, _symbol)
 
     #-------------------------------------------------------------------------
     # Sending compound messages: sequenced function calls
 
-    def start_message(self, int maxlen):
+    def start_message(self, maxlen: int) -> int:
         """start composition of a new list or typed message of up to max element length
 
         messages can be of a smaller length as max length is only an upper bound
@@ -396,13 +408,13 @@ cdef class Patch:
         """
         return libpd.libpd_start_message(maxlen)
 
-    def add_float(self, float x):
+    def add_float(self, x: float):
         """add a float to the current message in progress"""
         libpd.libpd_add_float(x)
 
-    def add_symbol(self, symbol):
+    def add_symbol(self, symbol: str):
         """add a symbol to the current message in progress"""
-        cdef bytes _symbol = symbol.encode()
+        cdef bytes _symbol = symbol.encode('utf-8')
         libpd.libpd_add_symbol(_symbol)
 
     #-------------------------------------------------------------------------
