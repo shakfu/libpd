@@ -1,3 +1,4 @@
+cimport pd
 cimport libpd
 cimport libportaudio
 
@@ -25,7 +26,7 @@ DEF MAX_ATOMS = 100
 cdef class Atom:
     """A wrapper class for a pure-data t_atom
     """
-    cdef libpd.t_atom *ptr
+    cdef pd.t_atom *ptr
     cdef bint ptr_owner
     cdef int size
 
@@ -42,28 +43,28 @@ cdef class Atom:
         libpd.set_float(self.ptr + idx, f)
 
     def get_float(self, int idx=0) -> float:
-        return <float>libpd.atom_getfloat(self.ptr + idx)
+        return <float>pd.atom_getfloat(self.ptr + idx)
 
     def set_symbol(self, str symbol, int idx=0):
         libpd.set_symbol(self.ptr + idx, symbol.encode('utf8'))
 
-    cdef t_symbol *get_symbol(self, int idx=0):
-        return libpd.atom_getsymbol(self.ptr + idx)
+    cdef pd.t_symbol *get_symbol(self, int idx=0):
+        return pd.atom_getsymbol(self.ptr + idx)
 
     def get_string(self, int idx=0) -> str:
         return (self.get_symbol(idx).s_name).decode()
 
     # def get_string(self, int idx=0) -> str:
-    #     return <str>(libpd.atom_getsymbol(self.ptr + idx).s_name)
+    #     return <str>(pd.atom_getsymbol(self.ptr + idx).s_name)
 
     # def get_symbol(self, int idx=0):
-    #     return libpd.atom_getsymbol(self.ptr + idx)
+    #     return pd.atom_getsymbol(self.ptr + idx)
 
     cdef bint is_symbol(self, int idx=0):
-        return (self.ptr + idx).a_type  == A_SYMBOL
+        return (self.ptr + idx).a_type  == pd.A_SYMBOL
  
     cdef bint is_float(self, int idx=0):
-        return (self.ptr + idx).a_type == A_FLOAT
+        return (self.ptr + idx).a_type == pd.A_FLOAT
 
     def to_list(self) -> list:
         _res = []
@@ -86,7 +87,7 @@ cdef class Atom:
                 print("other:", i)
 
     @staticmethod
-    cdef Atom from_ptr(libpd.t_atom *ptr, int size, bint owner=False):
+    cdef Atom from_ptr(pd.t_atom *ptr, int size, bint owner=False):
         # Call to __new__ bypasses __init__ constructor
         cdef Atom atom = Atom.__new__(Atom)
         atom.ptr = ptr
@@ -97,7 +98,7 @@ cdef class Atom:
     @staticmethod
     cdef Atom new(int size):
         #t_atom* at = (t_atom*)malloc(ac * sizeof(t_atom));
-        cdef libpd.t_atom *ptr = <libpd.t_atom *>malloc(size * sizeof(libpd.t_atom))
+        cdef pd.t_atom *ptr = <pd.t_atom *>malloc(size * sizeof(pd.t_atom))
         if ptr is NULL:
             raise MemoryError
         # ptr.a = 0
@@ -109,8 +110,8 @@ cdef class Atom:
         cdef char* c_string
         # cdef char c_string[5]
         cdef int size = len(lst)
-        cdef libpd.t_atom *ptr = <libpd.t_atom *>malloc(size * sizeof(libpd.t_atom))
-        # cdef libpd.t_atom *ptr =  <libpd.t_atom *>libpd.getbytes(size * sizeof(libpd.t_atom))
+        cdef pd.t_atom *ptr = <pd.t_atom *>malloc(size * sizeof(pd.t_atom))
+        # cdef pd.t_atom *ptr =  <pd.t_atom *>libpd.getbytes(size * sizeof(pd.t_atom))
         if ptr is NULL:
             raise MemoryError
 
@@ -431,60 +432,60 @@ cdef int process_raw_double(const double *inBuffer, double *outBuffer) nogil:
 #-------------------------------------------------------------------------
 # Atom operations
 
-# cdef bint is_symbol(libpd.t_atom *atom):
+# cdef bint is_symbol(pd.t_atom *atom):
 #     """Return true if atom is a symbol."""
 #     if atom:
-#         return atom.a_type == A_SYMBOL
+#         return atom.a_type == pd.A_SYMBOL
 #     else:
 #         return False
 
-# cdef bint is_float(libpd.t_atom *atom):
+# cdef bint is_float(pd.t_atom *atom):
 #     """Return true if atom is a float."""
 #     if atom:
-#         return atom.a_type == A_FLOAT
+#         return atom.a_type == pd.A_FLOAT
 #     else:
 #         return False
 
-cdef bint is_float(libpd.t_atom *a):
+cdef bint is_float(pd.t_atom *a):
     """check if an atom is a float type: 0 or 1
 
     note: no NULL check is performed
     """
     return libpd.libpd_is_float(a)
 
-cdef bint is_symbol(libpd.t_atom *a):
+cdef bint is_symbol(pd.t_atom *a):
     """check if an atom is a symbol type: 0 or 1
 
     note: no NULL check is performed
     """
     return libpd.libpd_is_symbol(a)
 
-cdef void set_float(libpd.t_atom *a, float x):
+cdef void set_float(pd.t_atom *a, float x):
     """write a float value to the given atom"""
     libpd.libpd_set_float(a, x)
 
-cdef float get_float(libpd.t_atom *a):
+cdef float get_float(pd.t_atom *a):
     """get the float value of an atom
 
     note: no NULL or type checks are performed
     """
     return libpd.libpd_get_float(a)
 
-cdef void set_symbol(libpd.t_atom *a, const char *symbol):
+cdef void set_symbol(pd.t_atom *a, const char *symbol):
     """write a symbol value to the given atom.
 
     requires that libpd_init has already been called.
     """
     libpd.libpd_set_symbol(a, symbol)
 
-cdef const char *get_symbol(libpd.t_atom *a):
+cdef const char *get_symbol(pd.t_atom *a):
     """get symbol value of an atom
 
     note: no NULL or type checks are performed
     """
     return libpd.libpd_get_symbol(a)
 
-cdef libpd.t_atom *next_atom(libpd.t_atom *a):
+cdef pd.t_atom *next_atom(pd.t_atom *a):
     """increment to the next atom in an atom vector
 
     returns next atom or NULL, assuming the atom vector is NULL-terminated
@@ -583,7 +584,7 @@ def add_symbol(symbol):
 #-------------------------------------------------------------------------
 # Sending compound messages: atom array
 
-cdef int send_list(const char *recv, int argc, libpd.t_atom *argv):
+cdef int send_list(const char *recv, int argc, pd.t_atom *argv):
     """send an atom array of a given length as a list to a destination receiver
 
     returns 0 on success or -1 if receiver name is non-existent
@@ -596,7 +597,7 @@ cdef int send_list(const char *recv, int argc, libpd.t_atom *argv):
     """
     return libpd.libpd_list(recv, argc, argv)
 
-cdef int send_message(const char *recv, const char *msg, int argc, libpd.t_atom *argv):
+cdef int send_message(const char *recv, const char *msg, int argc, pd.t_atom *argv):
     """send an atom array of a given length as a typed message to a destination receiver
 
     returns 0 on success or -1 if receiver name is non-existent
@@ -879,14 +880,14 @@ cdef void poll_gui():
 #-------------------------------------------------------------------------
 # Multiple instances
 
-cdef libpd.t_pdinstance *new_instance():
+cdef pd.t_pdinstance *new_instance():
     """create a new pd instance
 
     returns new instance or NULL when libpd is not compiled with PDINSTANCE
     """
     return libpd.libpd_new_instance()
 
-cdef void set_instance(libpd.t_pdinstance *p):
+cdef void set_instance(pd.t_pdinstance *p):
     """set the current pd instance
 
     subsequent libpd calls will affect this instance only
@@ -894,19 +895,19 @@ cdef void set_instance(libpd.t_pdinstance *p):
     """
     libpd.libpd_set_instance(p)
 
-cdef void free_instance(libpd.t_pdinstance *p):
+cdef void free_instance(pd.t_pdinstance *p):
     """free a pd instance
 
     does nothing when libpd is not compiled with PDINSTANCE
     """
     libpd.libpd_free_instance(p)
 
-cdef libpd.t_pdinstance *this_instance():
+cdef pd.t_pdinstance *this_instance():
     """get the current pd instance"""
 
     return libpd.libpd_this_instance()
 
-cdef libpd.t_pdinstance *get_instance(int index):
+cdef pd.t_pdinstance *get_instance(int index):
     """get a pd instance by index
 
     returns NULL if index is out of bounds or "this" instance when libpd is not

@@ -13,7 +13,7 @@ os.environ['LDFLAGS'] = " ".join([
 ])
 
 extensions = [
-    Extension("pd", ["pd.pyx"],
+    Extension("cypd", ["cypd.pyx"],
     #Extension("pylibpd", ["pylibpd.pyx", "helper.c"],
         define_macros = [
             ('PD', 1),

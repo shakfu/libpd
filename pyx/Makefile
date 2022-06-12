@@ -5,7 +5,7 @@ all: libpd pd
 
 pd:
 	@python3 setup.py build_ext --inplace	
-	@rm -rf ./build ./pd.c
+	@rm -rf ./build ./cypd.c
 
 
 libpd:
