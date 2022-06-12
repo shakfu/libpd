@@ -370,6 +370,28 @@ cdef class Patch:
         """
         return libpd.libpd_write_array(name, offset, src, n)
 
+    cdef int read_array_double(self, double *dest, const char *src, int offset, int n):
+        """read n values from named src array and write into dest starting at an offset
+        
+        returns 0 on success or a negative error code if the array is non-existent
+        or offset + n exceeds range of array
+        double-precision variant of `libpd_read_array()`
+        note: performs no bounds checking on dest
+        note: only full-precision when compiled with PD_FLOATSIZE=64
+        """
+        return libpd.libpd_read_array_double(dest, src, offset, n)
+
+    cdef int write_array_double(self, const char *dest, int offset, const double *src, int n):
+        """read n values from src and write into named dest array starting at an offset
+
+        returns 0 on success or a negative error code if the array is non-existent
+        or offset + n exceeds range of array
+        double-precision variant of `libpd_write_array()`
+        note: performs no bounds checking on src
+        note: only full-precision when compiled with PD_FLOATSIZE=64
+        """
+        return libpd.libpd_write_array_double(dest, offset, src, n)
+
     #-------------------------------------------------------------------------
     # Sending messages to pd
 
@@ -391,6 +413,17 @@ cdef class Patch:
         """
         cdef bytes _recv = receiver.encode('utf-8')
         return libpd.libpd_float(_recv, f)
+
+
+    def send_double(self, receiver: str, f: float) -> int:
+        """send a double to a destination receiver
+
+        ex: libpd_double("foo", 1.1) will send a 1.1 to [s foo] on the next tick
+        note: only full-precision when compiled with PD_FLOATSIZE=64
+        returns 0 on success or -1 if receiver name is non-existent
+        """
+        cdef bytes _recv = receiver.encode('utf-8')
+        return libpd.libpd_double(_recv, <double>f)
 
     def send_symbol(self, receiver: str, symbol: str) -> int:
         """send a symbol to a destination receiver
@@ -418,6 +451,13 @@ cdef class Patch:
         """add a float to the current message in progress"""
         libpd.libpd_add_float(x)
 
+    def add_double(self, x: float):
+        """add a double to the current message in progress
+        
+        note: only full-precision when compiled with PD_FLOATSIZE=64
+        """
+        libpd.libpd_add_double(<double>x)
+
     def add_symbol(self, symbol: str):
         """add a symbol to the current message in progress"""
         cdef bytes _symbol = symbol.encode('utf-8')
@@ -429,6 +469,13 @@ cdef class Patch:
     cdef void set_float(self, pd.t_atom *a, float x):
         """write a float value to the given atom"""
         libpd.libpd_set_float(a, x)
+
+    cdef void set_double(self, pd.t_atom *a, float x):
+        """write a double value to the given atom
+        
+        note: only full-precision when compiled with PD_FLOATSIZE=64
+        """
+        libpd.libpd_set_double(a, <double>x)
 
     cdef void set_symbol(self, pd.t_atom *a, const char *symbol):
         """write a symbol value to the given atom"""
@@ -542,6 +589,17 @@ cdef class Patch:
         """
         libpd.libpd_set_floathook(hook)
 
+    cdef void set_doublehook(self, const libpd.t_libpd_doublehook hook):
+        """set the double receiver hook, NULL by default
+
+        note: do not call this while DSP is running
+        note: you can either have a double receiver hook, or a float receiver
+              hook (see above), but not both.
+              calling this, will automatically unset the float receiver hook
+        note: only full-precision when compiled with PD_FLOATSIZE=64
+        """
+        libpd.libpd_set_doublehook(hook)
+
     cdef void set_symbolhook(self, const libpd.t_libpd_symbolhook hook):
         """set the symbol receiver hook, NULL by default
 
@@ -583,6 +641,14 @@ cdef class Patch:
         note: no NULL or type checks are performed
         """
         return libpd.libpd_get_float(a)
+
+    cdef double get_double(self, pd.t_atom *a):
+        """get the double value of an atom
+
+        note: no NULL or type checks are performed
+        note: only full-precision when compiled with PD_FLOATSIZE=64
+        """
+        return libpd.libpd_get_double(a)
 
     cdef const char *get_symbol(self, pd.t_atom *a):
         """get symbol value of an atom
