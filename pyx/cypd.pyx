@@ -76,11 +76,14 @@ cdef object pitchbend_callback = None
 cdef object aftertouch_callback = None
 cdef object polyaftertouch_callback = None
 cdef object midibyte_callback = None
+# cdef object sysex_callback = None
+# cdef object sysrealtime_callback = None
 
 
 # ----------------------------------------------------------------------------
 # callback hooks
 
+# messaging
 cdef void print_callback_hook(const char *s):
     if print_callback:
         print_callback(s.decode())
@@ -101,13 +104,56 @@ cdef void symbol_callback_hook(const char *recv, const char *symbol):
     if symbol_callback:
         symbol_callback(recv.decode(), symbol.decode())
 
-# cdef void list_callback_hook(const char *recv, int argc, pd.t_atom *argv):
-#     if list_callback:
-#         list_callback(recv.decode(), symbol.decode())
+cdef void list_callback_hook(const char *recv, int argc, pd.t_atom *argv):
+    cdef object args = None
+    if list_callback:
+        args = convert_args(recv, NULL, argc, argv)
+        list_callback(*args)
 
-# cdef void list_callback_hook(const char *recv, const char *symbol, int argc, pd.t_atom *argv):
-#     if message_callback:
-#         message_callback(recv.decode(), symbol.decode())
+cdef void message_callback_hook(const char *recv, const char *symbol, int argc, pd.t_atom *argv):
+    cdef object args = None
+    if message_callback:
+        args = convert_args(recv, symbol, argc, argv)
+        message_callback(*args)
+
+# midi
+cdef void noteon_callback_hook(int channel, int pitch, int velocity):
+    if noteon_callback:
+        noteon_callback(channel, pitch, velocity)
+
+cdef void controlchange_callback_hook(int channel, int controller, int value):
+    if controlchange_callback:
+        controlchange_callback(channel, controller, value)
+
+cdef void programchange_callback_hook(int channel, int value):
+    if programchange_callback:
+        programchange_callback(channel, value)
+
+cdef void pitchbend_callback_hook(int channel, int value):
+    if pitchbend_callback:
+        pitchbend_callback(channel, value)
+
+cdef void aftertouch_callback_hook(int channel, int value):
+    if aftertouch_callback:
+        aftertouch_callback(channel, value)
+
+cdef void polyaftertouch_callback_hook(int channel, int pitch, int value):
+    if polyaftertouch_callback:
+        polyaftertouch_callback(channel, pitch, value)
+
+cdef void midibyte_callback_hook(int port, int byte):
+    if midibyte_callback:
+        midibyte_callback(port, byte)
+
+# cdef void sysex_callback_hook(int port, int byte):
+#     if sysex_callback:
+#         sysex_callback(port, byte)
+
+# cdef void sysrealtime_callback_hook(int port, int byte):
+#     if sysrealtime_callback:
+#         sysrealtime_callback(port, byte)
+
+
 
 # ----------------------------------------------------------------------------
 # pure python callbacks
@@ -746,19 +792,30 @@ cdef class Patch:
         else:
             symbol_callback = None
 
-    cdef void set_listhook(self, const libpd.t_libpd_listhook hook):
+    def set_listhook(self, callback: Callable[...]):
         """set the list receiver hook, NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_listhook(hook)
+        global list_callback
+        if callable(callback):
+            list_callback = callback
+            libpd.libpd_set_listhook(list_callback_hook)
+        else:
+            list_callback = None
 
-    cdef void set_messagehook(self, const libpd.t_libpd_messagehook hook):
+
+    def set_messagehook(self, callback: Callable[...]):
         """set the message receiver hook, NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_messagehook(hook)
+        global message_callback
+        if callable(callback):
+            message_callback = callback
+            libpd.libpd_set_messagehook(message_callback_hook)
+        else:
+            message_callback = None
 
     cdef int is_float(self, pd.t_atom *a):
         """check if an atom is a float type: 0 or 1
@@ -891,61 +948,96 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Receiving MIDI messages from pd
 
-    cdef void set_noteonhook(self, const libpd.t_libpd_noteonhook hook):
+    def set_noteonhook(self, callback):
         """set the MIDI note on hook to receive from [noteout] objects, 
         NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_noteonhook(hook)
+        global noteon_callback
+        if callable(callback):
+            noteon_callback = callback
+            libpd.libpd_set_noteonhook(noteon_callback_hook)
+        else:
+            noteon_callback = None
 
-    cdef void set_controlchangehook(self, const libpd.t_libpd_controlchangehook hook):
+    def set_controlchangehook(self, callback):
         """set the MIDI control change hook to receive from [ctlout] objects,
         NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_controlchangehook(hook)
+        global controlchange_callback
+        if callable(callback):
+            controlchange_callback = callback
+            libpd.libpd_set_controlchangehook(controlchange_callback_hook)
+        else:
+            controlchange_callback = None
 
-    cdef void set_programchangehook(self, const libpd.t_libpd_programchangehook hook):
+    def set_programchangehook(self, callback):
         """set the MIDI program change hook to receive from [pgmout] objects,
         NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_programchangehook(hook)
+        global programchange_callback
+        if callable(callback):
+            programchange_callback = callback
+            libpd.libpd_set_programchangehook(programchange_callback_hook)
+        else:
+            programchange_callback = None
 
-    cdef void set_pitchbendhook(self, const libpd.t_libpd_pitchbendhook hook):
+    def set_pitchbendhook(self, callback):
         """set the MIDI pitch bend hook to receive from [bendout] objects,
         NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_pitchbendhook(hook)
+        global pitchbend_callback
+        if callable(callback):
+            pitchbend_callback = callback
+            libpd.libpd_set_pitchbendhook(pitchbend_callback_hook)
+        else:
+            pitchbend_callback = None
 
-    cdef void set_aftertouchhook(self, const libpd.t_libpd_aftertouchhook hook):
+    def set_aftertouchhook(self, callback):
         """set the MIDI after touch hook to receive from [touchout] objects,
         NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_aftertouchhook(hook)
+        global aftertouch_callback
+        if callable(callback):
+            aftertouch_callback = callback
+            libpd.libpd_set_aftertouchhook(aftertouch_callback_hook)
+        else:
+            aftertouch_callback = None
 
-    cdef void set_polyaftertouchhook(self, const libpd.t_libpd_polyaftertouchhook hook):
+    def set_polyaftertouchhook(self, callback):
         """set the MIDI poly after touch hook to receive from [polytouchout] objects,
         NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_polyaftertouchhook(hook)
+        global polyaftertouch_callback
+        if callable(callback):
+            polyaftertouch_callback = callback
+            libpd.libpd_set_polyaftertouchhook(polyaftertouch_callback_hook)
+        else:
+            polyaftertouch_callback = None
 
-    cdef void set_midibytehook(self, const libpd.t_libpd_midibytehook hook):
+    def set_midibytehook(self, callback):
         """set the raw MIDI byte hook to receive from [midiout] objects,
         NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_midibytehook(hook)
+        global midibyte_callback
+        if callable(callback):
+            midibyte_callback = callback
+            libpd.libpd_set_midibytehook(midibyte_callback_hook)
+        else:
+            midibyte_callback = None
 
     #-------------------------------------------------------------------------
     # Gui

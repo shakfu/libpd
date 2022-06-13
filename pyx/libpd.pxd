@@ -413,8 +413,7 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
     # channel is 0-indexed, controller is 0-127, and value is 0-127
     # channels encode MIDI ports via: libpd_channel = pd_channel + 16 * pd_port
     # note: out of range values from pd are clamped
-    ctypedef void (*t_libpd_controlchangehook)(int channel,
-        int controller, int value)
+    ctypedef void (*t_libpd_controlchangehook)(int channel, int controller, int value)
 
     # MIDI program change receive hook signature
     # channel is 0-indexed and value is 0-127
