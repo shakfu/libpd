@@ -77,8 +77,6 @@ cdef object pitchbend_callback = None
 cdef object aftertouch_callback = None
 cdef object polyaftertouch_callback = None
 cdef object midibyte_callback = None
-# cdef object sysex_callback = None
-# cdef object sysrealtime_callback = None
 
 
 # ----------------------------------------------------------------------------
@@ -146,16 +144,6 @@ cdef void polyaftertouch_callback_hook(int channel, int pitch, int value):
 cdef void midibyte_callback_hook(int port, int byte):
     if midibyte_callback:
         midibyte_callback(port, byte)
-
-# cdef void sysex_callback_hook(int port, int byte):
-#     if sysex_callback:
-#         sysex_callback(port, byte)
-
-# cdef void sysrealtime_callback_hook(int port, int byte):
-#     if sysrealtime_callback:
-#         sysrealtime_callback(port, byte)
-
-
 
 # ----------------------------------------------------------------------------
 # pure python callbacks
@@ -1144,5 +1132,3 @@ cdef class Patch:
         cdef int major, minor, bugfix
         pd.sys_getversion(&major, &minor, &bugfix)
         return f'{major}.{minor}.{bugfix}'
-
-
