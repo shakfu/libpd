@@ -56,6 +56,27 @@ cdef convert_args(const char *recv, const char *symbol, int argc, pd.t_atom *arg
             result.append(pval)
     return tuple(result)
 
+def process_args(args):
+    if libpd.libpd_start_message(len(args)):
+        return -2
+    for arg in args:
+        if isinstance(arg, str):
+            libpd.libpd_add_symbol(arg)
+        else:
+            if isinstance(arg, int) or isinstance(arg, float):
+                libpd.libpd_add_float(arg)
+            else:
+                return -1
+    return 0
+
+
+# def libpd_list(recv, *args):
+#     return process_args(args) or libpd.libpd_finish_list(recv)
+
+
+# def libpd_message(recv, symbol, *args):
+#     return process_args(args) or libpd.libpd_finish_message(recv, symbol)
+
 
 # ----------------------------------------------------------------------------
 # callback slots
@@ -151,7 +172,23 @@ cdef void midibyte_callback_hook(int port, int byte):
 def pd_print(str s):
     print(">>>", s.strip())
 
+def pd_bang(str recv):
+    print(f">>> BANG {recv}")
 
+def pd_float(str recv, float f):
+    print(f">>> float {f} {recv}")
+
+def pd_symbol(str recv, str sym):
+    print(f">>> symbol {sym} {recv}")
+
+def pd_message(*args):
+    print(f">>> msg {args}")
+
+def pd_list(*args):
+    print(f">>> list {args}")
+
+def pd_noteon(int channel, int pitch, int velocity):
+    print(f">>> noteon chan: {channel} pitch: {pitch} vel: {velocity}")
 
 # ----------------------------------------------------------------------------
 # audio configuration
@@ -210,7 +247,7 @@ cdef class Patch:
 
     # patch handle
     cdef void * handle
-    cdef bint is_open
+    cdef readonly bint is_open
 
     # pointer dicts
     cdef dict patch_dict
@@ -336,6 +373,17 @@ cdef class Patch:
         by 0, set any custom handling after calling this function
         """
         return libpd.libpd_init()
+
+    def init_hooks(self):
+        """initialize all hooks"""
+        self.set_printhook(pd_print)
+        self.set_banghook(pd_bang)
+        self.set_floathook(pd_float)
+        self.set_symbolhook(pd_symbol)
+        self.set_messagehook(pd_message)
+        self.set_listhook(pd_list)
+        self.set_noteonhook(pd_noteon)
+
 
     def clear_search_path(self):
         """clear the libpd search path for abstractions and externals
@@ -617,38 +665,46 @@ cdef class Patch:
         """write a symbol value to the given atom"""
         libpd.libpd_set_symbol(a, symbol)
 
-    cdef int send_list(self, const char *recv, int argc, pd.t_atom *argv):
-        """send an atom array of a given length as a list to a destination receiver
+    def send_list(self, recv, *args):
+        return process_args(args) or libpd.libpd_finish_list(recv)
 
-        returns 0 on success or -1 if receiver name is non-existent
-        ex: send [list 1 2 bar( to [r foo] on the next tick with:
-            t_atom v[3]
-            libpd_set_float(v, 1)
-            libpd_set_float(v + 1, 2)
-            libpd_set_symbol(v + 2, "bar")
-            libpd_list("foo", 3, v)
-        """
-        return libpd.libpd_list(recv, argc, argv)
 
-    def send_message(self, reciever: str, msg: str, *args) -> int:
-        """send an atom array of a given length as a typed message to a destination receiver
+    def send_message(self, recv, symbol, *args):
+        return process_args(args) or libpd.libpd_finish_message(recv, symbol)
 
-        returns 0 on success or -1 if receiver name is non-existent
-        ex: send [ pd dsp 1( on the next tick with:
-            t_atom v[1]
-            libpd_set_float(v, 1)
-            libpd_message("pd", "dsp", 1, v)
-        """
-        cdef int argc = len(args)
-        cdef pd.t_atom argv[MAX_ATOMS]
-        if argc > 0:
-            for i, arg in enumerate(args):
-                if isinstance(arg, float) or isinstance(arg, int):
-                    self.set_float(argv + <int>i, arg)
-                if isinstance(argv, str):
-                    self.set_symbol(argv + <int>i, arg.encode('utf-8'))
-            return libpd.libpd_message(reciever, msg, argc, argv)
-        raise ValueError(f'Invalid input values for {reciever} {msg} msg')
+
+    # cdef int send_list(self, const char *recv, int argc, pd.t_atom *argv):
+    #     """send an atom array of a given length as a list to a destination receiver
+
+    #     returns 0 on success or -1 if receiver name is non-existent
+    #     ex: send [list 1 2 bar( to [r foo] on the next tick with:
+    #         t_atom v[3]
+    #         libpd_set_float(v, 1)
+    #         libpd_set_float(v + 1, 2)
+    #         libpd_set_symbol(v + 2, "bar")
+    #         libpd_list("foo", 3, v)
+    #     """
+    #     return libpd.libpd_list(recv, argc, argv)
+
+    # def send_message(self, reciever: str, msg: str, *args) -> int:
+    #     """send an atom array of a given length as a typed message to a destination receiver
+
+    #     returns 0 on success or -1 if receiver name is non-existent
+    #     ex: send [ pd dsp 1( on the next tick with:
+    #         t_atom v[1]
+    #         libpd_set_float(v, 1)
+    #         libpd_message("pd", "dsp", 1, v)
+    #     """
+    #     cdef int argc = len(args)
+    #     cdef pd.t_atom argv[MAX_ATOMS]
+    #     if argc > 0:
+    #         for i, arg in enumerate(args):
+    #             if isinstance(arg, float) or isinstance(arg, int):
+    #                 self.set_float(argv + <int>i, arg)
+    #             if isinstance(argv, str):
+    #                 self.set_symbol(argv + <int>i, arg.encode('utf-8'))
+    #         return libpd.libpd_message(reciever, msg, argc, argv)
+    #     raise ValueError(f'Invalid input values for {reciever} {msg} msg')
 
     # cdef int send_message(self, const char *recv, const char *msg, int argc, pd.t_atom *argv):
     #     """send an atom array of a given length as a typed message to a destination receiver
