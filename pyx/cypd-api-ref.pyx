@@ -130,6 +130,10 @@ cdef class Patch:
     cdef void * handle
     cdef bint is_open
 
+    # pointer dicts
+    cdef dict patch_dict
+    cdef dict recv_dict
+
     def __cinit__(self, str name, str dir='.')
     def play(self):
     cdef terminate(self, libportaudio.PaError err, void *handle):
@@ -176,8 +180,8 @@ cdef class Patch:
     
     def dsp(self, on=True):
 
-    cdef void *bind(self, const char *recv):
-    cdef void unbind(self, void *p):
+    def bind(self, recv: str):
+    def unbind(self, recv: str):
     def exists(self, recv: str) -> int:
     
     def set_printhook(self, callback: Callable[str]):

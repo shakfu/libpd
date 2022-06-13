@@ -224,6 +224,10 @@ cdef class Patch:
     cdef void * handle
     cdef bint is_open
 
+    # pointer dicts
+    cdef dict patch_dict
+    cdef dict recv_dict
+
     def __cinit__(self, str name, str dir='.', 
             int sample_rate=SAMPLE_RATE, int ticks=N_TICKS, int blocksize=BLOCKSIZE,
             int in_channels=CHANNELS_IN, int out_channels=CHANNELS_OUT):
@@ -238,6 +242,8 @@ cdef class Patch:
         self.out_channels = out_channels
         self.handle = NULL
         self.is_open = False
+        self.patch_dict = {}
+        self.recv_dict = {}
 
     def play(self):
 
@@ -710,18 +716,21 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Receiving messages from pd
 
-    cdef void *bind(self, const char *recv):
+    def bind(self, recv: str):
         """subscribe to messages sent to a source receiver
 
         ex: libpd_bind("foo") adds a "virtual" [r foo] which forwards messages to
             the libpd message hooks
         returns an opaque receiver pointer or NULL on failure
         """
-        return libpd.libpd_bind(recv)
+        cdef uintptr_t ptr = <uintptr_t>libpd.libpd_bind(recv.encode('utf-8'))
+        self.recv_dict[recv] = ptr
 
-    cdef void unbind(self, void *p):
+    def unbind(self, recv: str):
         """unsubscribe and free a source receiver object created by libpd_bind()"""
-        libpd.libpd_unbind(p)
+        cdef uintptr_t ptr = <uintptr_t>self.recv_dict[recv]
+        libpd.libpd_unbind(<void*>ptr)
+        del self.recv_dict[recv]
 
     def exists(self, recv: str) -> bool:
         """check if a source receiver object exists with a given name
