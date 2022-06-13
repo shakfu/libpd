@@ -10,6 +10,7 @@ cimport libportaudio
 from cpython cimport array
 
 from libc.stdio cimport printf, fprintf, stderr, FILE
+from libc.stdint cimport uintptr_t
 from posix.unistd cimport sleep
 
 # from libc.string cimport strcpy, strlen
@@ -89,30 +90,31 @@ cdef void print_callback_hook(const char *s):
         print_callback(s.decode())
 
 cdef void bang_callback_hook(const char *recv):
-    if bang_callback:
+
+    if bang_callback and libpd.libpd_exists(recv):
         bang_callback(recv.decode())
 
 cdef void float_callback_hook(const char *recv, float f):
-    if float_callback:
+    if float_callback and libpd.libpd_exists(recv):
         float_callback(recv.decode(), f)
 
 cdef void double_callback_hook(const char *recv, double d):
-    if double_callback:
+    if double_callback and libpd.libpd_exists(recv):
         double_callback(recv.decode(), d)
 
 cdef void symbol_callback_hook(const char *recv, const char *symbol):
-    if symbol_callback:
+    if symbol_callback and libpd.libpd_exists(recv):
         symbol_callback(recv.decode(), symbol.decode())
 
 cdef void list_callback_hook(const char *recv, int argc, pd.t_atom *argv):
     cdef object args = None
-    if list_callback:
+    if list_callback and libpd.libpd_exists(recv):
         args = convert_args(recv, NULL, argc, argv)
         list_callback(*args)
 
 cdef void message_callback_hook(const char *recv, const char *symbol, int argc, pd.t_atom *argv):
     cdef object args = None
-    if message_callback:
+    if message_callback and libpd.libpd_exists(recv):
         args = convert_args(recv, symbol, argc, argv)
         message_callback(*args)
 
@@ -715,18 +717,18 @@ cdef class Patch:
             the libpd message hooks
         returns an opaque receiver pointer or NULL on failure
         """
-        libpd.libpd_bind(recv)
+        return libpd.libpd_bind(recv)
 
     cdef void unbind(self, void *p):
         """unsubscribe and free a source receiver object created by libpd_bind()"""
         libpd.libpd_unbind(p)
 
-    cdef int exists(self, const char *recv):
+    def exists(self, recv: str) -> bool:
         """check if a source receiver object exists with a given name
 
         returns 1 if the receiver exists, otherwise 0
         """
-        return libpd.libpd_exists(recv)
+        return libpd.libpd_exists(recv.encode('utf-8'))
 
     def set_printhook(self, callback: Callable[str]):
         """set the print receiver hook, prints to stdout by default
@@ -864,7 +866,7 @@ cdef class Patch:
     # Sending MIDI messages to pd
 
 
-    cdef int noteon(self, int channel, int pitch, int velocity):
+    def noteon(self, channel: int , pitch: int, velocity: int) -> int:
         """send a MIDI note on message to [notein] objects
 
         channel is 0-indexed, pitch is 0-127, and velocity is 0-127
@@ -874,7 +876,7 @@ cdef class Patch:
         """
         return libpd.libpd_noteon(channel, pitch, velocity)
 
-    cdef int controlchange(self, int channel, int controller, int value):
+    def controlchange(self, channel: int, controller: int, value: int) -> int:
         """send a MIDI control change message to [ctlin] objects
 
         channel is 0-indexed, controller is 0-127, and value is 0-127
@@ -883,7 +885,7 @@ cdef class Patch:
         """
         return libpd.libpd_controlchange(channel, controller, value)
 
-    cdef int programchange(self, int channel, int value):
+    def programchange(self, channel: int, value: int) -> int:
         """send a MIDI program change message to [pgmin] objects
 
         channel is 0-indexed and value is 0-127
@@ -892,7 +894,7 @@ cdef class Patch:
         """
         return libpd.libpd_programchange(channel, value)
 
-    cdef int pitchbend(self, int channel, int value):
+    def pitchbend(self, channel: int, value: int) -> int:
         """send a MIDI pitch bend message to [bendin] objects
 
         channel is 0-indexed and value is -8192-8192
@@ -902,7 +904,7 @@ cdef class Patch:
         """
         return libpd.libpd_pitchbend(channel, value)
 
-    cdef int aftertouch(self, int channel, int value):
+    def aftertouch(self, channel: int, value: int) -> int:
         """send a MIDI after touch message to [touchin] objects
 
         channel is 0-indexed and value is 0-127
@@ -911,7 +913,7 @@ cdef class Patch:
         """
         return libpd.libpd_aftertouch(channel, value)
 
-    cdef int polyaftertouch(self, int channel, int pitch, int value):
+    def polyaftertouch(self, channel: int, pitch: int, value: int) -> int:
         """send a MIDI poly after touch message to [polytouchin] objects
 
         channel is 0-indexed, pitch is 0-127, and value is 0-127
@@ -920,7 +922,7 @@ cdef class Patch:
         """
         return libpd.libpd_polyaftertouch(channel, pitch, value)
 
-    cdef int midibyte(self, int port, int byte):
+    def midibyte(self, port: int, byte: int) -> int:
         """send a raw MIDI byte to [midiin] objects
 
         port is 0-indexed and byte is 0-256
@@ -928,7 +930,7 @@ cdef class Patch:
         """
         return libpd.libpd_midibyte(port, byte)
 
-    cdef int sysex(self, int port, int byte):
+    def sysex(self, port: int, byte: int) -> int:
         """send a raw MIDI byte to [sysexin] objects
 
         port is 0-indexed and byte is 0-256
@@ -936,7 +938,7 @@ cdef class Patch:
         """
         return libpd.libpd_sysex(port, byte)
 
-    cdef int sysrealtime(self, int port, int byte):
+    def sysrealtime(self, port: int, byte: int) -> int:
         """send a raw MIDI byte to [realtimein] objects
 
         port is 0-indexed and byte is 0-256
@@ -1051,21 +1053,12 @@ cdef class Patch:
         """
         return libpd.libpd_start_gui(path.encode('utf8'))
 
-    # cdef int start_gui(self, char *path):
-    #     """open the current patches within a pd vanilla GUI
-
-    #     requires the path to pd's main folder that contains bin/, tcl/, etc
-    #     for a macOS .app bundle: /path/to/Pd-#.#-#.app/Contents/Resources
-    #     returns 0 on success
-    #     """
-    #     return libpd.libpd_start_gui(path)
-
-    cdef void stop_gui(self):
+    def stop_gui(self):
         """stop the pd vanilla GUI"""
 
         libpd.libpd_stop_gui()
 
-    cdef void poll_gui(self):
+    def poll_gui(self):
         """manually update and handle any GUI messages
 
         this is called automatically when using a libpd_process function,
@@ -1113,7 +1106,7 @@ cdef class Patch:
         """
         return libpd.libpd_get_instance(index)
 
-    cdef int num_instances(self):
+    def num_instances(self) -> int:
         """get the number of pd instances
 
         returns number or 1 when libpd is not compiled with PDINSTANCE
@@ -1125,13 +1118,13 @@ cdef class Patch:
     # Log level
 
 
-    cdef int get_verbose(self):
+    def get_verbose(self) -> int:
         """get verbose print state: 0 or 1"""
 
         return libpd.libpd_get_verbose()
 
 
-    cdef void set_verbose(self, int verbose):
+    def set_verbose(self, verbose: int):
         """set verbose print state: 0 or 1"""
 
         libpd.libpd_set_verbose(verbose)
