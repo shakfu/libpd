@@ -15,7 +15,11 @@ from posix.unistd cimport sleep
 # from libc.string cimport strcpy, strlen
 # from libc.stdlib cimport malloc
 
+from collections.abc import Callable
 
+
+# ----------------------------------------------------------------------------
+# constants
 
 DEF N_TICKS = 1
 DEF SAMPLE_RATE = 44100
@@ -25,7 +29,96 @@ DEF BLOCKSIZE = 64
 DEF IN_BUF = CHANNELS_IN * BLOCKSIZE
 DEF OUT_BUF = CHANNELS_OUT * BLOCKSIZE
 DEF PRERUN_SLEEP = 2000
+DEF MAX_ATOMS = 1024
 
+
+# ----------------------------------------------------------------------------
+# helper functions
+
+cdef convert_args(const char *recv, const char *symbol, int argc, pd.t_atom *argv):
+    
+    cdef list result = []
+    cdef pd.t_atom* a
+    cdef object pval = None
+
+    result.append(recv.decode())
+    if symbol:
+        result.append(symbol.decode())
+
+    if argc > 0:
+        for i in range(argc):
+            a = &argv[<int>i]
+            if libpd.libpd_is_float(a):
+                pval = <float>libpd.libpd_get_float(a)
+            elif libpd.libpd_is_symbol(a):
+                pval = libpd.libpd_get_symbol(a).decode()
+            result.append(pval)
+    return tuple(result)
+
+
+# ----------------------------------------------------------------------------
+# callback slots
+
+# callbacks
+cdef object print_callback = None
+cdef object bang_callback = None
+cdef object float_callback = None
+cdef object double_callback = None
+cdef object symbol_callback = None
+cdef object list_callback = None
+cdef object message_callback = None
+
+# midi callbacks
+cdef object noteon_callback = None
+cdef object controlchange_callback = None
+cdef object programchange_callback = None
+cdef object pitchbend_callback = None
+cdef object aftertouch_callback = None
+cdef object polyaftertouch_callback = None
+cdef object midibyte_callback = None
+
+
+# ----------------------------------------------------------------------------
+# callback hooks
+
+cdef void print_callback_hook(const char *s):
+    if print_callback:
+        print_callback(s.decode())
+
+cdef void bang_callback_hook(const char *recv):
+    if bang_callback:
+        bang_callback(recv.decode())
+
+cdef void float_callback_hook(const char *recv, float f):
+    if float_callback:
+        float_callback(recv.decode(), f)
+
+cdef void double_callback_hook(const char *recv, double d):
+    if double_callback:
+        double_callback(recv.decode(), d)
+
+cdef void symbol_callback_hook(const char *recv, const char *symbol):
+    if symbol_callback:
+        symbol_callback(recv.decode(), symbol.decode())
+
+# cdef void list_callback_hook(const char *recv, int argc, pd.t_atom *argv):
+#     if list_callback:
+#         list_callback(recv.decode(), symbol.decode())
+
+# cdef void list_callback_hook(const char *recv, const char *symbol, int argc, pd.t_atom *argv):
+#     if message_callback:
+#         message_callback(recv.decode(), symbol.decode())
+
+# ----------------------------------------------------------------------------
+# pure python callbacks
+
+def pd_print(str s):
+    print(">>>", s.strip())
+
+
+
+# ----------------------------------------------------------------------------
+# audio configuration
 
 cdef struct UserAudioData:
     # one input channel, two output channels
@@ -64,21 +157,22 @@ cdef int audio_callback(const void *inputBuffer, void *outputBuffer,
             out[i] = data.outbuf[i]
     return 0
 
-
-# use with libpd_printhook to print to console
-cdef void pdprint(const char *s):
-    printf("><> %s", s)
-
-
+# ----------------------------------------------------------------------------
+# main patch class
 
 cdef class Patch:
+    # cdef readonly str path
     cdef readonly str name
     cdef readonly str dir
+    
+    # audio
     cdef readonly int sample_rate
     cdef readonly int blocksize
     cdef readonly int ticks
     cdef readonly int in_channels
     cdef readonly int out_channels
+
+    # patch handle
     cdef void * handle
     cdef bint is_open
 
@@ -107,7 +201,7 @@ cdef class Patch:
         cdef libportaudio.PaError err
         
         # hooks
-        self.set_printhook(pdprint)
+        self.set_printhook(pd_print)
 
         # init
         self.init()
@@ -494,7 +588,7 @@ cdef class Patch:
         """
         return libpd.libpd_list(recv, argc, argv)
 
-    cdef int send_message(self, const char *recv, const char *msg, int argc, pd.t_atom *argv):
+    def send_message(self, reciever: str, msg: str, *args) -> int:
         """send an atom array of a given length as a typed message to a destination receiver
 
         returns 0 on success or -1 if receiver name is non-existent
@@ -503,7 +597,27 @@ cdef class Patch:
             libpd_set_float(v, 1)
             libpd_message("pd", "dsp", 1, v)
         """
-        return libpd.libpd_message(recv, msg, argc, argv)
+        cdef int argc = len(args)
+        cdef pd.t_atom argv[MAX_ATOMS]
+        if argc > 0:
+            for i, arg in enumerate(args):
+                if isinstance(arg, float) or isinstance(arg, int):
+                    self.set_float(argv + <int>i, arg)
+                if isinstance(argv, str):
+                    self.set_symbol(argv + <int>i, arg.encode('utf-8'))
+            return libpd.libpd_message(reciever, msg, argc, argv)
+        raise ValueError(f'Invalid input values for {reciever} {msg} msg')
+
+    # cdef int send_message(self, const char *recv, const char *msg, int argc, pd.t_atom *argv):
+    #     """send an atom array of a given length as a typed message to a destination receiver
+
+    #     returns 0 on success or -1 if receiver name is non-existent
+    #     ex: send [ pd dsp 1( on the next tick with:
+    #         t_atom v[1]
+    #         libpd_set_float(v, 1)
+    #         libpd_message("pd", "dsp", 1, v)
+    #     """
+    #     return libpd.libpd_message(recv, msg, argc, argv)
 
     cdef int finish_list(self, const char *recv):
         """finish current message and send as a list to a destination receiver
@@ -568,28 +682,43 @@ cdef class Patch:
         """
         return libpd.libpd_exists(recv)
 
-    cdef void set_printhook(self, const libpd.t_libpd_printhook hook):
+    def set_printhook(self, callback: Callable[str]):
         """set the print receiver hook, prints to stdout by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_printhook(hook)
+        global print_callback
+        if callable(callback):
+            print_callback = callback
+            libpd.libpd_set_printhook(print_callback_hook)
+        else:
+            print_callback = None
 
-    cdef void set_banghook(self, const libpd.t_libpd_banghook hook):
+    def set_banghook(self, callback: Callable[str]):
         """set the bang receiver hook, NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_banghook(hook)
+        global bang_callback
+        if callable(callback):
+            bang_callback = callback
+            libpd.libpd_set_banghook(bang_callback_hook)
+        else:
+            bang_callback = None
 
-    cdef void set_floathook(self, const libpd.t_libpd_floathook hook):
+    def set_floathook(self, callback: Callable[str, float]):
         """set the float receiver hook, NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_floathook(hook)
+        global float_callback
+        if callable(callback):
+            float_callback = callback
+            libpd.libpd_set_floathook(float_callback_hook)
+        else:
+            float_callback = None
 
-    cdef void set_doublehook(self, const libpd.t_libpd_doublehook hook):
+    def set_doublehook(self, callback: Callable[str, float]):
         """set the double receiver hook, NULL by default
 
         note: do not call this while DSP is running
@@ -598,14 +727,24 @@ cdef class Patch:
               calling this, will automatically unset the float receiver hook
         note: only full-precision when compiled with PD_FLOATSIZE=64
         """
-        libpd.libpd_set_doublehook(hook)
+        global double_callback
+        if callable(callback):
+            double_callback = callback
+            libpd.libpd_set_doublehook(double_callback_hook)
+        else:
+            double_callback = None
 
-    cdef void set_symbolhook(self, const libpd.t_libpd_symbolhook hook):
+    def set_symbolhook(self, callback: Callable[str, str]):
         """set the symbol receiver hook, NULL by default
 
         note: do not call this while DSP is running
         """
-        libpd.libpd_set_symbolhook(hook)
+        global symbol_callback
+        if callable(callback):
+            symbol_callback = callback
+            libpd.libpd_set_symbolhook(symbol_callback_hook)
+        else:
+            symbol_callback = None
 
     cdef void set_listhook(self, const libpd.t_libpd_listhook hook):
         """set the list receiver hook, NULL by default
