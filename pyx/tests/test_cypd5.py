@@ -14,7 +14,8 @@ p.bind("eggs")
 
 p.send_float("spam", 42)
 p.send_symbol("spam", "don't panic")
-p.send_list("spam", "test", 1, "foo", 2)
+# p.send_list("spam", "test", 1, "foo", 2)
 
 p.unbind("eggs")
 
+# FIXME: hanging for cypd (not and for pylib-)

@@ -61,7 +61,7 @@ def process_args(args):
         return -2
     for arg in args:
         if isinstance(arg, str):
-            libpd.libpd_add_symbol(arg)
+            libpd.libpd_add_symbol(arg.encode('utf-8'))
         else:
             if isinstance(arg, int) or isinstance(arg, float):
                 libpd.libpd_add_float(arg)
@@ -170,25 +170,49 @@ cdef void midibyte_callback_hook(int port, int byte):
 # pure python callbacks
 
 def pd_print(str s):
-    print(">>>", s.strip())
+    print("p>>", s.strip())
 
 def pd_bang(str recv):
-    print(f">>> BANG {recv}")
+    print(f"b>> BANG {recv}")
 
 def pd_float(str recv, float f):
-    print(f">>> float {f} {recv}")
+    print(f"f>> float {f} {recv}")
 
 def pd_symbol(str recv, str sym):
-    print(f">>> symbol {sym} {recv}")
-
-def pd_message(*args):
-    print(f">>> msg {args}")
+    print(f"s>> symbol {sym} {recv}")
 
 def pd_list(*args):
-    print(f">>> list {args}")
+    print(f"l>> list {args}")
+
+def pd_message(*args):
+    print(f"m>> msg {args}")
 
 def pd_noteon(int channel, int pitch, int velocity):
-    print(f">>> noteon chan: {channel} pitch: {pitch} vel: {velocity}")
+    print(f"n>> noteon chan: {channel} pitch: {pitch} vel: {velocity}")
+
+# ----------------------------------------------------------------------------
+# c callbacks
+
+cdef void pd_cprint(const char *s):
+    printf("p>> %s\n", s)
+
+cdef void pd_cbang(const char *recv):
+    printf("b>> BANG %s\n", recv)
+
+cdef void pd_cfloat(const char *recv, float x):
+    printf("f>> float %s %d\n", recv, x)
+
+cdef void pd_csymbol(const char *recv, const char *symbol):
+    printf("s>> symbol %s %s\n", recv, symbol)
+
+cdef void pd_clist(const char *recv, int argc, pd.t_atom *argv):
+    printf("l>> list %s %i\n", recv, argc)
+
+cdef void pd_cmessage(const char *recv, const char *msg, int argc, pd.t_atom *argv):
+    printf("m>> msg %s %s %i\n", recv, msg, argc)
+
+cdef void pd_cnoteon(int channel, int pitch, int velocity):
+    printf("n>> noteon chan: %i pitch: %i vel: %i\n", channel, pitch, velocity)
 
 # ----------------------------------------------------------------------------
 # audio configuration
@@ -251,7 +275,7 @@ cdef class Patch:
 
     # pointer dicts
     cdef dict patch_dict
-    cdef dict recv_dict
+    cdef dict source_dict
 
     def __cinit__(self, str name, str dir='.', 
             int sample_rate=SAMPLE_RATE, int ticks=N_TICKS, int blocksize=BLOCKSIZE,
@@ -268,7 +292,7 @@ cdef class Patch:
         self.handle = NULL
         self.is_open = False
         self.patch_dict = {}
-        self.recv_dict = {}
+        self.source_dict = {}
 
     def play(self):
 
@@ -376,14 +400,20 @@ cdef class Patch:
 
     def init_hooks(self):
         """initialize all hooks"""
-        self.set_printhook(pd_print)
-        self.set_banghook(pd_bang)
-        self.set_floathook(pd_float)
-        self.set_symbolhook(pd_symbol)
-        self.set_messagehook(pd_message)
-        self.set_listhook(pd_list)
-        self.set_noteonhook(pd_noteon)
-
+        # self.set_printhook(pd_print)
+        # self.set_banghook(pd_bang)
+        # self.set_floathook(pd_float)
+        # self.set_symbolhook(pd_symbol)
+        # self.set_messagehook(pd_message)
+        # self.set_listhook(pd_list)
+        # self.set_noteonhook(pd_noteon)
+        libpd.libpd_set_printhook(pd_cprint)
+        # libpd.libpd_set_banghook(pd_cbang)
+        # libpd.libpd_set_floathook(pd_cfloat)
+        # libpd.libpd_set_symbolhook(pd_csymbol)
+        # libpd.libpd_set_listhook(pd_clist)
+        # libpd.libpd_set_messagehook(pd_cmessage)
+        # libpd.libpd_set_noteonhook(pd_cnoteon)
 
     def clear_search_path(self):
         """clear the libpd search path for abstractions and externals
@@ -666,11 +696,12 @@ cdef class Patch:
         libpd.libpd_set_symbol(a, symbol)
 
     def send_list(self, recv, *args):
-        return process_args(args) or libpd.libpd_finish_list(recv)
+        return process_args(args) or libpd.libpd_finish_list(recv.encode('utf-8'))
 
 
     def send_message(self, recv, symbol, *args):
-        return process_args(args) or libpd.libpd_finish_message(recv, symbol)
+        return process_args(args) or (
+            libpd.libpd_finish_message(recv.encode('utf-8'), symbol.encode('utf-8')))
 
 
     # cdef int send_list(self, const char *recv, int argc, pd.t_atom *argv):
@@ -686,6 +717,7 @@ cdef class Patch:
     #     """
     #     return libpd.libpd_list(recv, argc, argv)
 
+    # # FIXME: expected bytes string found
     # def send_message(self, reciever: str, msg: str, *args) -> int:
     #     """send an atom array of a given length as a typed message to a destination receiver
 
@@ -760,21 +792,21 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Receiving messages from pd
 
-    def bind(self, recv: str):
+    def subscribe(self, source: str):
         """subscribe to messages sent to a source receiver
 
         ex: libpd_bind("foo") adds a "virtual" [r foo] which forwards messages to
             the libpd message hooks
         returns an opaque receiver pointer or NULL on failure
         """
-        cdef uintptr_t ptr = <uintptr_t>libpd.libpd_bind(recv.encode('utf-8'))
-        self.recv_dict[recv] = ptr
+        cdef uintptr_t ptr = <uintptr_t>libpd.libpd_bind(source.encode('utf-8'))
+        self.source_dict[source] = ptr
 
-    def unbind(self, recv: str):
+    def unsubscribe(self, source: str):
         """unsubscribe and free a source receiver object created by libpd_bind()"""
-        cdef uintptr_t ptr = <uintptr_t>self.recv_dict[recv]
+        cdef uintptr_t ptr = <uintptr_t>self.source_dict[source]
         libpd.libpd_unbind(<void*>ptr)
-        del self.recv_dict[recv]
+        del self.source_dict[source]
 
     def exists(self, recv: str) -> bool:
         """check if a source receiver object exists with a given name
@@ -1104,7 +1136,7 @@ cdef class Patch:
         for a macOS .app bundle: /path/to/Pd-#.#-#.app/Contents/Resources
         returns 0 on success
         """
-        return libpd.libpd_start_gui(path.encode('utf8'))
+        return libpd.libpd_start_gui(path.encode('utf-8'))
 
     def stop_gui(self):
         """stop the pd vanilla GUI"""
