@@ -1,6 +1,12 @@
 """ cypd.pyx
 
-An cythoon extension class wrapping libpd in an 'object-orirented' way.
+An cython extension class wrapping libpd in an 'object-oriented' way.
+
+
+## TODO
+
+- [ ] python callback function mechanism is not working (freezing) -- check again
+      how pylibd does it.
 
 
 """
@@ -200,7 +206,7 @@ cdef void pd_cbang(const char *recv):
     printf("b>> BANG %s\n", recv)
 
 cdef void pd_cfloat(const char *recv, float x):
-    printf("f>> float %s %d\n", recv, x)
+    printf("f>> float %s %f\n", recv, x)
 
 cdef void pd_csymbol(const char *recv, const char *symbol):
     printf("s>> symbol %s %s\n", recv, symbol)
@@ -408,12 +414,12 @@ cdef class Patch:
         # self.set_listhook(pd_list)
         # self.set_noteonhook(pd_noteon)
         libpd.libpd_set_printhook(pd_cprint)
-        # libpd.libpd_set_banghook(pd_cbang)
-        # libpd.libpd_set_floathook(pd_cfloat)
-        # libpd.libpd_set_symbolhook(pd_csymbol)
-        # libpd.libpd_set_listhook(pd_clist)
-        # libpd.libpd_set_messagehook(pd_cmessage)
-        # libpd.libpd_set_noteonhook(pd_cnoteon)
+        libpd.libpd_set_banghook(pd_cbang)
+        libpd.libpd_set_floathook(pd_cfloat)
+        libpd.libpd_set_symbolhook(pd_csymbol)
+        libpd.libpd_set_listhook(pd_clist)
+        libpd.libpd_set_messagehook(pd_cmessage)
+        libpd.libpd_set_noteonhook(pd_cnoteon)
 
     def clear_search_path(self):
         """clear the libpd search path for abstractions and externals
