@@ -180,17 +180,17 @@ cdef class Patch:
     
     def dsp(self, on=True):
 
-    def bind(self, recv: str):
-    def unbind(self, recv: str):
+    def subscribe(self, recv: str):
+    def unsubscribe(self, recv: str):
     def exists(self, recv: str) -> int:
     
-    def set_printhook(self, callback: Callable[str]):
-    def set_banghook(self, callback: Callable[str]):
-    def set_floathook(self, callback: Callable[str, float]):
-    def set_doublehook(self, callback: Callable[str, float]):
-    def set_symbolhook(self, callback: Callable[str, str]):
-    def set_listhook(self, callback: Callable[...]):
-    def set_messagehook(self, callback: Callable[...]):
+    def set_print_callback(self, callback: Callable[str]):
+    def set_bang_callback(self, callback: Callable[str]):
+    def set_float_callback(self, callback: Callable[str, float]):
+    def set_double_callback(self, callback: Callable[str, float]):
+    def set_symbol_callback(self, callback: Callable[str, str]):
+    def set_list_callback(self, callback: Callable[...]):
+    def set_message_callback(self, callback: Callable[...]):
 
     cdef int is_float(self, pd.t_atom *a):
     cdef int is_symbol(self, pd.t_atom *a):
@@ -209,13 +209,13 @@ cdef class Patch:
     def sysex(self, port: int, byte: int) -> int:
     def sysrealtime(self, port: int, byte: int) -> int:
 
-    def set_noteonhook(self, callback):
-    def set_controlchangehook(self, callback):
-    def set_programchangehook(self, callback):
-    def set_pitchbendhook(self, callback):
-    def set_aftertouchhook(self, callback):
-    def set_polyaftertouchhook(self, callback):
-    def set_midibytehook(self, callback):
+    def set_noteon_callback(self, callback):
+    def set_controlchange_callback(self, callback):
+    def set_programchange_callback(self, callback):
+    def set_pitchbend_callback(self, callback):
+    def set_aftertouch_callback(self, callback):
+    def set_polyaftertouch_callback(self, callback):
+    def set_midibyte_callback(self, callback):
     def start_gui(self, str path):
     def stop_gui(self):
     def poll_gui(self):

@@ -25,6 +25,9 @@ from posix.unistd cimport sleep
 from collections.abc import Callable
 
 
+
+
+
 # ----------------------------------------------------------------------------
 # constants
 
@@ -115,31 +118,30 @@ cdef void print_callback_hook(const char *s):
         print_callback(s.decode())
 
 cdef void bang_callback_hook(const char *recv):
-
-    if bang_callback and libpd.libpd_exists(recv):
+    if bang_callback:
         bang_callback(recv.decode())
 
 cdef void float_callback_hook(const char *recv, float f):
-    if float_callback and libpd.libpd_exists(recv):
+    if float_callback:
         float_callback(recv.decode(), f)
 
 cdef void double_callback_hook(const char *recv, double d):
-    if double_callback and libpd.libpd_exists(recv):
+    if double_callback:
         double_callback(recv.decode(), d)
 
 cdef void symbol_callback_hook(const char *recv, const char *symbol):
-    if symbol_callback and libpd.libpd_exists(recv):
+    if symbol_callback:
         symbol_callback(recv.decode(), symbol.decode())
 
 cdef void list_callback_hook(const char *recv, int argc, pd.t_atom *argv):
     cdef object args = None
-    if list_callback and libpd.libpd_exists(recv):
+    if list_callback:
         args = convert_args(recv, NULL, argc, argv)
         list_callback(*args)
 
 cdef void message_callback_hook(const char *recv, const char *symbol, int argc, pd.t_atom *argv):
     cdef object args = None
-    if message_callback and libpd.libpd_exists(recv):
+    if message_callback:
         args = convert_args(recv, symbol, argc, argv)
         message_callback(*args)
 
@@ -309,8 +311,8 @@ cdef class Patch:
         cdef libportaudio.PaStream *stream # opens the audio stream
         cdef libportaudio.PaError err
         
-        # hooks
-        self.set_printhook(pd_print)
+        # set callbacks
+        self.set_print_callback(pd_print)
 
         # init
         self.init()
@@ -406,20 +408,20 @@ cdef class Patch:
 
     def init_hooks(self):
         """initialize all hooks"""
-        # self.set_printhook(pd_print)
-        # self.set_banghook(pd_bang)
-        # self.set_floathook(pd_float)
-        # self.set_symbolhook(pd_symbol)
-        # self.set_messagehook(pd_message)
-        # self.set_listhook(pd_list)
-        # self.set_noteonhook(pd_noteon)
-        libpd.libpd_set_printhook(pd_cprint)
-        libpd.libpd_set_banghook(pd_cbang)
-        libpd.libpd_set_floathook(pd_cfloat)
-        libpd.libpd_set_symbolhook(pd_csymbol)
-        libpd.libpd_set_listhook(pd_clist)
-        libpd.libpd_set_messagehook(pd_cmessage)
-        libpd.libpd_set_noteonhook(pd_cnoteon)
+        self.set_print_callback(pd_print)
+        self.set_bang_callback(pd_bang)
+        self.set_float_callback(pd_float)
+        self.set_symbol_callback(pd_symbol)
+        self.set_message_callback(pd_message)
+        self.set_list_callback(pd_list)
+        # self.set_noteon_callback(pd_noteon)
+        # libpd.libpd_set_printhook(pd_cprint)
+        # libpd.libpd_set_banghook(pd_cbang)
+        # libpd.libpd_set_floathook(pd_cfloat)
+        # libpd.libpd_set_symbolhook(pd_csymbol)
+        # libpd.libpd_set_listhook(pd_clist)
+        # libpd.libpd_set_messagehook(pd_cmessage)
+        # libpd.libpd_set_noteonhook(pd_cnoteon)
 
     def clear_search_path(self):
         """clear the libpd search path for abstractions and externals
@@ -701,13 +703,12 @@ cdef class Patch:
         """write a symbol value to the given atom"""
         libpd.libpd_set_symbol(a, symbol)
 
-    def send_list(self, recv, *args):
-        return process_args(args) or libpd.libpd_finish_list(recv.encode('utf-8'))
+    # def send_list(self, recv, *args):
+    #     return process_args(args) or libpd.libpd_finish_list(recv.encode('utf-8'))
 
-
-    def send_message(self, recv, symbol, *args):
-        return process_args(args) or (
-            libpd.libpd_finish_message(recv.encode('utf-8'), symbol.encode('utf-8')))
+    # def send_message(self, recv, symbol, *args):
+    #     return process_args(args) or (
+    #         libpd.libpd_finish_message(recv.encode('utf-8'), symbol.encode('utf-8')))
 
 
     # cdef int send_list(self, const char *recv, int argc, pd.t_atom *argv):
@@ -723,26 +724,75 @@ cdef class Patch:
     #     """
     #     return libpd.libpd_list(recv, argc, argv)
 
-    # # FIXME: expected bytes string found
-    # def send_message(self, reciever: str, msg: str, *args) -> int:
-    #     """send an atom array of a given length as a typed message to a destination receiver
+    def send_list(self, reciever: str, *args) -> int:
+        """send an atom array of a given length as a list to a destination receiver
 
-    #     returns 0 on success or -1 if receiver name is non-existent
-    #     ex: send [ pd dsp 1( on the next tick with:
-    #         t_atom v[1]
-    #         libpd_set_float(v, 1)
-    #         libpd_message("pd", "dsp", 1, v)
-    #     """
-    #     cdef int argc = len(args)
-    #     cdef pd.t_atom argv[MAX_ATOMS]
-    #     if argc > 0:
-    #         for i, arg in enumerate(args):
-    #             if isinstance(arg, float) or isinstance(arg, int):
-    #                 self.set_float(argv + <int>i, arg)
-    #             if isinstance(argv, str):
-    #                 self.set_symbol(argv + <int>i, arg.encode('utf-8'))
-    #         return libpd.libpd_message(reciever, msg, argc, argv)
-    #     raise ValueError(f'Invalid input values for {reciever} {msg} msg')
+        returns 0 on success or -1 if receiver name is non-existent
+        ex: send [list 1 2 bar( to [r foo] on the next tick with:
+            t_atom v[3]
+            libpd_set_float(v, 1)
+            libpd_set_float(v + 1, 2)
+            libpd_set_symbol(v + 2, "bar")
+            libpd_list("foo", 3, v)
+        """
+        cdef int argc = len(args)
+        cdef pd.t_atom argv[MAX_ATOMS]
+        if argc > 0:
+            for i, arg in enumerate(args):
+                if isinstance(arg, float) or isinstance(arg, int):
+                    self.set_float(argv + <int>i, <float>arg)
+                elif isinstance(arg, str):
+                    sym = arg.encode('utf-8')
+                    self.set_symbol(argv + <int>i, sym)
+            recv = reciever.encode('utf-8')
+            return libpd.libpd_list(recv, argc, argv)
+        raise ValueError(f'Invalid input values for {reciever} {args}')
+
+
+    # # # FIXME: expected bytes string found
+    def send_message(self, reciever: str, msg: str, *args) -> int:
+        """send an atom array of a given length as a typed message to a destination receiver
+
+        returns 0 on success or -1 if receiver name is non-existent
+        ex: send [ pd dsp 1( on the next tick with:
+            t_atom v[1]
+            libpd_set_float(v, 1)
+            libpd_message("pd", "dsp", 1, v)
+        """
+        cdef int argc = len(args)
+        cdef pd.t_atom argv[MAX_ATOMS]
+        if argc > 0:
+            for i, arg in enumerate(args):
+                if isinstance(arg, float) or isinstance(arg, int):
+                    self.set_float(argv + <int>i, arg)
+                elif isinstance(arg, str):
+                    sym = arg.encode('utf-8')
+                    self.set_symbol(argv + <int>i, sym)
+            recv = reciever.encode('utf-8')
+            return libpd.libpd_message(recv, msg, argc, argv)
+        raise ValueError(f'Invalid input values for {reciever} {msg} {args} msg')
+
+    def send_list(self, recv, *args):
+        return process_args(args) or libpd.libpd_finish_list(recv.encode('utf-8'))
+
+    def send_message(self, recv, symbol, *args):
+        return process_args(args) or (
+            libpd.libpd_finish_message(recv.encode('utf-8'), symbol.encode('utf-8')))
+
+
+    def process_args(args):
+        if libpd.libpd_start_message(len(args)):
+            return -2
+        for arg in args:
+            if isinstance(arg, str):
+                libpd.libpd_add_symbol(arg.encode('utf-8'))
+            else:
+                if isinstance(arg, int) or isinstance(arg, float):
+                    libpd.libpd_add_float(arg)
+                else:
+                    return -1
+        return 0
+
 
     # cdef int send_message(self, const char *recv, const char *msg, int argc, pd.t_atom *argv):
     #     """send an atom array of a given length as a typed message to a destination receiver
@@ -821,8 +871,8 @@ cdef class Patch:
         """
         return libpd.libpd_exists(recv.encode('utf-8'))
 
-    def set_printhook(self, callback: Callable[str]):
-        """set the print receiver hook, prints to stdout by default
+    def set_print_callback(self, callback: Callable[str]):
+        """set the print receiver callback, prints to stdout by default
 
         note: do not call this while DSP is running
         """
@@ -833,8 +883,8 @@ cdef class Patch:
         else:
             print_callback = None
 
-    def set_banghook(self, callback: Callable[str]):
-        """set the bang receiver hook, NULL by default
+    def set_bang_callback(self, callback: Callable[str]):
+        """set the bang receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
@@ -845,8 +895,8 @@ cdef class Patch:
         else:
             bang_callback = None
 
-    def set_floathook(self, callback: Callable[str, float]):
-        """set the float receiver hook, NULL by default
+    def set_float_callback(self, callback: Callable[str, float]):
+        """set the float receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
@@ -857,8 +907,8 @@ cdef class Patch:
         else:
             float_callback = None
 
-    def set_doublehook(self, callback: Callable[str, float]):
-        """set the double receiver hook, NULL by default
+    def set_double_callback(self, callback: Callable[str, float]):
+        """set the double receiver callback, NULL by default
 
         note: do not call this while DSP is running
         note: you can either have a double receiver hook, or a float receiver
@@ -873,8 +923,8 @@ cdef class Patch:
         else:
             double_callback = None
 
-    def set_symbolhook(self, callback: Callable[str, str]):
-        """set the symbol receiver hook, NULL by default
+    def set_symbol_callback(self, callback: Callable[str, str]):
+        """set the symbol receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
@@ -885,8 +935,8 @@ cdef class Patch:
         else:
             symbol_callback = None
 
-    def set_listhook(self, callback: Callable[...]):
-        """set the list receiver hook, NULL by default
+    def set_list_callback(self, callback: Callable[...]):
+        """set the list receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
@@ -898,8 +948,8 @@ cdef class Patch:
             list_callback = None
 
 
-    def set_messagehook(self, callback: Callable[...]):
-        """set the message receiver hook, NULL by default
+    def set_message_callback(self, callback: Callable[...]):
+        """set the message receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
@@ -1041,8 +1091,8 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Receiving MIDI messages from pd
 
-    def set_noteonhook(self, callback):
-        """set the MIDI note on hook to receive from [noteout] objects, 
+    def set_noteon_callback(self, callback):
+        """set the MIDI note on callback to receive from [noteout] objects, 
         NULL by default
 
         note: do not call this while DSP is running
@@ -1054,8 +1104,8 @@ cdef class Patch:
         else:
             noteon_callback = None
 
-    def set_controlchangehook(self, callback):
-        """set the MIDI control change hook to receive from [ctlout] objects,
+    def set_controlchange_callback(self, callback):
+        """set the MIDI control change callback to receive from [ctlout] objects,
         NULL by default
 
         note: do not call this while DSP is running
@@ -1067,8 +1117,8 @@ cdef class Patch:
         else:
             controlchange_callback = None
 
-    def set_programchangehook(self, callback):
-        """set the MIDI program change hook to receive from [pgmout] objects,
+    def set_programchange_callback(self, callback):
+        """set the MIDI program change callback to receive from [pgmout] objects,
         NULL by default
 
         note: do not call this while DSP is running
@@ -1080,7 +1130,7 @@ cdef class Patch:
         else:
             programchange_callback = None
 
-    def set_pitchbendhook(self, callback):
+    def set_pitchbend_callback(self, callback):
         """set the MIDI pitch bend hook to receive from [bendout] objects,
         NULL by default
 
@@ -1093,7 +1143,7 @@ cdef class Patch:
         else:
             pitchbend_callback = None
 
-    def set_aftertouchhook(self, callback):
+    def set_aftertouch_callback(self, callback):
         """set the MIDI after touch hook to receive from [touchout] objects,
         NULL by default
 
@@ -1106,7 +1156,7 @@ cdef class Patch:
         else:
             aftertouch_callback = None
 
-    def set_polyaftertouchhook(self, callback):
+    def set_polyaftertouch_callback(self, callback):
         """set the MIDI poly after touch hook to receive from [polytouchout] objects,
         NULL by default
 
@@ -1119,7 +1169,7 @@ cdef class Patch:
         else:
             polyaftertouch_callback = None
 
-    def set_midibytehook(self, callback):
+    def set_midibyte_callback(self, callback):
         """set the raw MIDI byte hook to receive from [midiout] objects,
         NULL by default
 
