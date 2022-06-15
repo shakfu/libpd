@@ -5,45 +5,74 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 
 os.environ['LDFLAGS'] = " ".join([
-        "-framework CoreServices",
-        "-framework CoreFoundation",
-        "-framework AudioUnit",
-        "-framework AudioToolbox",
-        "-framework CoreAudio",
+    "-framework CoreServices",
+    "-framework CoreFoundation",
+    "-framework AudioUnit",
+    "-framework AudioToolbox",
+    "-framework CoreAudio",
 ])
 
-extensions = [
-    Extension("cypd", ["cypd.pyx"],
-    #Extension("pylibpd", ["pylibpd.pyx", "helper.c"],
-        define_macros = [
-            ('PD', 1),
-            ('HAVE_UNISTD_H', 1),
-            ('HAVE_LIBDL', 1),
-            ('USEAPI_DUMMY', 1),
-            ('LIBPD_EXTRA', 1)
-        ],
-        include_dirs=[
-            "/usr/local/include",
-            "../libpd_wrapper",
-            "../libpd_wrapper/util",
-            "../pure-data/src",
-        ],
-        libraries = [
-            'm',
-            'dl',
-            'pthread',
-            'portaudio', # requires portaudio to be installed system-wide
-        ],
-        library_dirs=[
-            '/usr/local/lib',
-            '../libs'
-        ],
-        extra_objects=[
-            '../libs/libpd.a',
-        ],
-    ),
+DEFINE_MACROS = [
+    ('PD', 1),
+    ('HAVE_UNISTD_H', 1),
+    ('HAVE_LIBDL', 1),
+    ('USEAPI_DUMMY', 1),
+    ('LIBPD_EXTRA', 1),
 ]
 
+INCLUDE_DIRS = [
+    "/usr/local/include",
+    "../libpd_wrapper",
+    "../libpd_wrapper/util",
+    "../pure-data/src",
+]
+
+LIBRARIES = [
+    'm',
+    'dl',
+    'pthread',
+    'portaudio', # requires portaudio to be installed system-wide
+]
+
+LIBRARY_DIRS = [
+    '/usr/local/lib',
+    '../libs',
+]
+
+EXTRA_OBJECTS = [
+    '../libs/libpd.a',
+]
+
+
+CYPD_EXTENSION = Extension("cypd", ["cypd.pyx"],
+    define_macros = DEFINE_MACROS,
+    include_dirs = INCLUDE_DIRS,
+    libraries = LIBRARIES,
+    library_dirs = LIBRARY_DIRS,
+    extra_objects = EXTRA_OBJECTS,
+)
+
+LIBPD_EXTENSION = Extension("libpd", ["libpd.pyx"],
+    define_macros = DEFINE_MACROS,
+    include_dirs = INCLUDE_DIRS,
+    libraries = LIBRARIES,
+    library_dirs = LIBRARY_DIRS,
+    extra_objects = EXTRA_OBJECTS,
+)
+
+extensions = []
+
+if os.getenv('CYPD'):
+    extensions.append(CYPD_EXTENSION)
+
+elif os.getenv('LIBPD'):
+    extensions.append(LIBPD_EXTENSION)
+
+else:
+    extensions.extend([
+        CYPD_EXTENSION,
+        LIBPD_EXTENSION,
+    ])
 
 setup(
     name="pd in cython",

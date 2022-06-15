@@ -22,9 +22,8 @@ from posix.unistd cimport sleep
 # from libc.string cimport strcpy, strlen
 # from libc.stdlib cimport malloc
 
+import threading
 from collections.abc import Callable
-
-
 
 
 
@@ -262,6 +261,8 @@ cdef int audio_callback(const void *inputBuffer, void *outputBuffer,
             out[i] = data.outbuf[i]
     return 0
 
+
+
 # ----------------------------------------------------------------------------
 # main patch class
 
@@ -381,6 +382,14 @@ cdef class Patch:
         self.close()
 
         return err
+
+    # def play(self):
+    #     thread = threading.Thread(target=task, args=(
+    #         self.name.encode('utf-8'), self.dir.encode('utf-8'), 
+    #         SAMPLE_RATE, BLOCKSIZE, CHANNELS_IN, CHANNELS_OUT))
+
+    #     thread.start()
+    #     print(1)
 
     #-------------------------------------------------------------------------
     # Termination

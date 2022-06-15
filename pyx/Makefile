@@ -1,17 +1,17 @@
 
 # BREW_PORTAUDIO_STATIC="/usr/local/opt/portaudio/lib/libportaudio.a"
 
-all: libpd cypd
+all:
+	@python3 setup.py build_ext --inplace
+	@rm -rf ./build ./cypd.c ./libpd.c
 
 cypd:
-	@python3 setup.py build_ext --inplace	
+	@CYPD=1 python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./cypd.c
 
-
 libpd:
-	@python3 setup_libpd.py build_ext --inplace	
+	@LIBPD=1 python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./libpd.c
-
 
 audio_test:
 	@echo "generating portaudio c implementation test"
@@ -33,7 +33,7 @@ minim:
 .PHONY: test clean test_atom
 
 test_atom: libpd
-	@python3 ./test_atom.py
+	@python3 ./tests/test_atom.py
 
 test: cypd
 	@python3 ./tests/test_cypd_audio.py
