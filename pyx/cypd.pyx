@@ -1,12 +1,6 @@
 """ cypd.pyx
 
-An cython extension class wrapping libpd in an 'object-oriented' way.
-
-
-## TODO
-
-- [ ] python callback function mechanism is not working (freezing) -- check again
-      how pylibd does it.
+A cython extension class wrapping libpd in an 'object-oriented' way.
 
 
 """
@@ -18,13 +12,8 @@ from cpython cimport array
 from libc.stdio cimport printf, fprintf, stderr, FILE
 from libc.stdint cimport uintptr_t
 from posix.unistd cimport sleep
-
-# from libc.string cimport strcpy, strlen
-# from libc.stdlib cimport malloc
-
-import threading
-from collections.abc import Callable
-
+from libc.stdlib cimport malloc, free
+from libc.string cimport strcpy, strlen
 
 
 # ----------------------------------------------------------------------------
@@ -361,7 +350,7 @@ cdef class Patch:
         # RUN HERE
 
         # self.run()
-        self.dsp()
+        self.dsp(1)
         sleep(4)
         self.dsp(0)
 
@@ -382,14 +371,6 @@ cdef class Patch:
         self.close()
 
         return err
-
-    # def play(self):
-    #     thread = threading.Thread(target=task, args=(
-    #         self.name.encode('utf-8'), self.dir.encode('utf-8'), 
-    #         SAMPLE_RATE, BLOCKSIZE, CHANNELS_IN, CHANNELS_OUT))
-
-    #     thread.start()
-    #     print(1)
 
     #-------------------------------------------------------------------------
     # Termination
@@ -781,15 +762,7 @@ cdef class Patch:
             return libpd.libpd_message(recv, msg, argc, argv)
         raise ValueError(f'Invalid input values for {reciever} {msg} {args} msg')
 
-    def send_list(self, recv, *args):
-        return process_args(args) or libpd.libpd_finish_list(recv.encode('utf-8'))
-
-    def send_message(self, recv, symbol, *args):
-        return process_args(args) or (
-            libpd.libpd_finish_message(recv.encode('utf-8'), symbol.encode('utf-8')))
-
-
-    def process_args(args):
+    def process_args(self, args):
         if libpd.libpd_start_message(len(args)):
             return -2
         for arg in args:
@@ -802,19 +775,17 @@ cdef class Patch:
                     return -1
         return 0
 
+    def send_list(self, recv, *args):
+        """send an atom array of a given length as a list to a destination receiver
+        """
+        return process_args(args) or self.finish_list(recv)
 
-    # cdef int send_message(self, const char *recv, const char *msg, int argc, pd.t_atom *argv):
-    #     """send an atom array of a given length as a typed message to a destination receiver
+    def send_message(self, recv, symbol, *args):
+        """send an atom array of a given length as a typed message to a destination receiver
+        """
+        return process_args(args) or self.finish_message(recv, symbol)
 
-    #     returns 0 on success or -1 if receiver name is non-existent
-    #     ex: send [ pd dsp 1( on the next tick with:
-    #         t_atom v[1]
-    #         libpd_set_float(v, 1)
-    #         libpd_message("pd", "dsp", 1, v)
-    #     """
-    #     return libpd.libpd_message(recv, msg, argc, argv)
-
-    cdef int finish_list(self, const char *recv):
+    def finish_list(self, recv: str) -> int:
         """finish current message and send as a list to a destination receiver
 
         returns 0 on success or -1 if receiver name is non-existent
@@ -825,9 +796,9 @@ cdef class Patch:
             libpd_add_symbol("bar")
             libpd_finish_list("foo")
         """
-        return libpd.libpd_finish_list(recv)
+        return libpd.libpd_finish_list(recv.encode('utf-8'))
 
-    cdef int finish_message(self, const char *recv, const char *msg):
+    def finish_message(self, recv: str, msg: str) -> int:
         """finish current message and send as a typed message to a destination receiver
 
         note: typed message handling currently only supports up to 4 elements
@@ -838,7 +809,8 @@ cdef class Patch:
             libpd_add_float(1)
             libpd_finish_message("pd", "dsp")
         """
-        return libpd.libpd_finish_message(recv, msg)
+        return libpd.libpd_finish_message(recv.encode('utf-8'), msg.encode('utf-8'))
+
 
     #-------------------------------------------------------------------------
     # Convenience messages methods
@@ -880,7 +852,7 @@ cdef class Patch:
         """
         return libpd.libpd_exists(recv.encode('utf-8'))
 
-    def set_print_callback(self, callback: Callable[str]):
+    def set_print_callback(self, callback):
         """set the print receiver callback, prints to stdout by default
 
         note: do not call this while DSP is running
@@ -892,7 +864,7 @@ cdef class Patch:
         else:
             print_callback = None
 
-    def set_bang_callback(self, callback: Callable[str]):
+    def set_bang_callback(self, callback):
         """set the bang receiver callback, NULL by default
 
         note: do not call this while DSP is running
@@ -904,7 +876,7 @@ cdef class Patch:
         else:
             bang_callback = None
 
-    def set_float_callback(self, callback: Callable[str, float]):
+    def set_float_callback(self, callback):
         """set the float receiver callback, NULL by default
 
         note: do not call this while DSP is running
@@ -916,7 +888,7 @@ cdef class Patch:
         else:
             float_callback = None
 
-    def set_double_callback(self, callback: Callable[str, float]):
+    def set_double_callback(self, callback):
         """set the double receiver callback, NULL by default
 
         note: do not call this while DSP is running
@@ -932,7 +904,7 @@ cdef class Patch:
         else:
             double_callback = None
 
-    def set_symbol_callback(self, callback: Callable[str, str]):
+    def set_symbol_callback(self, callback):
         """set the symbol receiver callback, NULL by default
 
         note: do not call this while DSP is running
@@ -944,7 +916,7 @@ cdef class Patch:
         else:
             symbol_callback = None
 
-    def set_list_callback(self, callback: Callable[...]):
+    def set_list_callback(self, callback):
         """set the list receiver callback, NULL by default
 
         note: do not call this while DSP is running
@@ -957,7 +929,7 @@ cdef class Patch:
             list_callback = None
 
 
-    def set_message_callback(self, callback: Callable[...]):
+    def set_message_callback(self, callback):
         """set the message receiver callback, NULL by default
 
         note: do not call this while DSP is running
@@ -1267,7 +1239,6 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Log level
 
-
     def get_verbose(self) -> int:
         """get verbose print state: 0 or 1"""
 
@@ -1285,3 +1256,138 @@ cdef class Patch:
         cdef int major, minor, bugfix
         pd.sys_getversion(&major, &minor, &bugfix)
         return f'{major}.{minor}.{bugfix}'
+
+
+# ----------------------------------------------------------------------------
+# experimental atom class
+
+
+cdef class Atom:
+    """A wrapper class for a pure-data t_atom
+    """
+    cdef pd.t_atom *ptr
+    cdef bint ptr_owner
+    cdef int size
+
+    def __cinit__(self):
+        self.ptr_owner = False
+
+    def __dealloc__(self):
+        # De-allocate if not null and flag is set
+        if self.ptr is not NULL and self.ptr_owner is True:
+            free(self.ptr)
+            self.ptr = NULL
+
+    def set_float(self, float f, int idx=0):
+        libpd.libpd_set_float(self.ptr + idx, f)
+
+    def get_float(self, int idx=0) -> float:
+        return <float>pd.atom_getfloat(self.ptr + idx)
+
+    def set_symbol(self, str symbol, int idx=0):
+        libpd.libpd_set_symbol(self.ptr + idx, symbol.encode('utf8'))
+
+    cdef pd.t_symbol *get_symbol(self, int idx=0):
+        return pd.atom_getsymbol(self.ptr + idx)
+
+    def get_string(self, int idx=0) -> str:
+        return (self.get_symbol(idx).s_name).decode()
+
+    # def get_string(self, int idx=0) -> str:
+    #     return <str>(pd.atom_getsymbol(self.ptr + idx).s_name)
+
+    # def get_symbol(self, int idx=0):
+    #     return pd.atom_getsymbol(self.ptr + idx)
+
+    cdef bint is_symbol(self, int idx=0):
+        return (self.ptr + idx).a_type  == pd.A_SYMBOL
+ 
+    cdef bint is_float(self, int idx=0):
+        return (self.ptr + idx).a_type == pd.A_FLOAT
+
+    def to_list(self) -> list:
+        _res = []
+        for i in range(self.size):
+            if self.is_symbol(i):
+                _res.append(self.get_string(i))
+            elif self.is_float(i):
+                _res.append(self.get_float(i))
+        return _res
+
+    def display(self):
+        for i in range(self.size):
+            if self.is_float(i):
+                print("is_float:", i)
+            elif self.is_symbol(i):
+                print("is_symbol:", i)
+                s = self.get_string(i)
+                print("string:", type(s))
+            else:
+                print("other:", i)
+
+    @staticmethod
+    cdef Atom from_ptr(pd.t_atom *ptr, int size, bint owner=False):
+        # Call to __new__ bypasses __init__ constructor
+        cdef Atom atom = Atom.__new__(Atom)
+        atom.ptr = ptr
+        atom.ptr_owner = owner
+        atom.size = size
+        return atom
+
+    @staticmethod
+    cdef Atom new(int size):
+        #t_atom* at = (t_atom*)malloc(ac * sizeof(t_atom));
+        cdef pd.t_atom *ptr = <pd.t_atom *>malloc(size * sizeof(pd.t_atom))
+        if ptr is NULL:
+            raise MemoryError
+        # ptr.a = 0
+        # ptr.b = 0
+        return Atom.from_ptr(ptr, size, owner=True)
+
+    @staticmethod
+    cdef Atom from_list(list lst):
+        cdef char* c_string
+        # cdef char c_string[5]
+        cdef int size = len(lst)
+        cdef pd.t_atom *ptr = <pd.t_atom *>malloc(size * sizeof(pd.t_atom))
+        # cdef pd.t_atom *ptr =  <pd.t_atom *>libpd.getbytes(size * sizeof(pd.t_atom))
+        if ptr is NULL:
+            raise MemoryError
+
+        cdef int i
+        for i, obj in enumerate(lst):
+            
+            if isinstance(obj, float):
+                libpd.libpd_set_float(ptr+i, <float>obj)
+            
+            elif isinstance(obj, int):
+                libpd.libpd_set_float(ptr+i, <float>obj)
+
+            elif isinstance(obj, bytes):
+                libpd.libpd_set_symbol(ptr+i, obj)
+
+            elif isinstance(obj, str):
+                libpd.libpd_set_symbol(ptr+i, obj.encode('UTF-8'))
+
+            else:
+                print("cannot convert:", obj)
+                continue
+
+        return Atom.from_ptr(ptr, size, owner=True)
+
+
+def test_Atom():
+    # IMPORTANT: MUST CALL libpd_init() before libpd_set_symbol or crash!
+    libpd.libpd_init()
+
+    a1 = Atom.new(10)
+    floats = [i + 0.5 for i in range(9)]
+    for i, f in enumerate(floats):
+        a1.set_float(f, i)
+
+    for i in range(9):
+        print(a1.get_float(i))
+
+    a2 = Atom.from_list([1.1, 10, 3, b"hello", "world"])
+    print("a2.to_list:", a2.to_list())
+

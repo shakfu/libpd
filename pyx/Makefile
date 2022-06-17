@@ -32,11 +32,14 @@ minim:
 
 .PHONY: test clean test_atom
 
-test_atom: libpd
-	@python3 ./tests/test_atom.py
+test-libpd:
+	@python3 ./tests/test_libpd_audio.py
 
-test: cypd
+test-cypd:
 	@python3 ./tests/test_cypd_audio.py
+
+test-atom:
+	@python3 ./tests/test_atom.py
 
 clean:
 	@rm -f *.so

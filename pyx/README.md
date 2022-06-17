@@ -2,7 +2,7 @@
 
 ## Objectives
 
-- Provide an alternative to the swig-based pylibpd
+- Provide a cython-based 'more hackable' alternative to the swig-based pylibpd
 
 - Builtin integration with `portaudio` or alternative (`miniaudio?`)
 
@@ -11,6 +11,12 @@
 - Should perform without observable audio artifacts
 
   - `nogil` for audio processing functions
+
+- Provide two implementations:
+
+  - Functional implentation: essentially a module with functions
+
+  - Object-Oriented implementation: a more 'pythonic' approach with classes
 
 
 ## Status
