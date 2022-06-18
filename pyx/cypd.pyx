@@ -24,8 +24,6 @@ DEF SAMPLE_RATE = 44100
 DEF CHANNELS_IN = 1
 DEF CHANNELS_OUT = 2
 DEF BLOCKSIZE = 64
-DEF IN_BUF = CHANNELS_IN * BLOCKSIZE
-DEF OUT_BUF = CHANNELS_OUT * BLOCKSIZE
 DEF PRERUN_SLEEP = 2000
 DEF MAX_ATOMS = 1024
 
@@ -611,7 +609,7 @@ cdef class Patch:
     def send_bang(self, receiver: str) -> int:
         """send a bang to a destination receiver
 
-        ex: libpd_bang("foo") will send a bang to [s foo] on the next tick
+        ex: send_bang("foo") will send a bang to [s foo] on the next tick
         returns 0 on success or -1 if receiver name is non-existent
         """
         cdef bytes _recv = receiver.encode('utf-8')
@@ -620,7 +618,7 @@ cdef class Patch:
     def send_float(self, receiver: str, f: float) -> int:
         """send a float to a destination receiver
 
-        ex: libpd_float("foo", 1) will send a 1.0 to [s foo] on the next tick
+        ex: send_float("foo", 1) will send a 1.0 to [s foo] on the next tick
         returns 0 on success or -1 if receiver name is non-existent
         """
         cdef bytes _recv = receiver.encode('utf-8')
@@ -630,7 +628,7 @@ cdef class Patch:
     def send_double(self, receiver: str, f: float) -> int:
         """send a double to a destination receiver
 
-        ex: libpd_double("foo", 1.1) will send a 1.1 to [s foo] on the next tick
+        ex: send_double("foo", 1.1) will send a 1.1 to [s foo] on the next tick
         note: only full-precision when compiled with PD_FLOATSIZE=64
         returns 0 on success or -1 if receiver name is non-existent
         """

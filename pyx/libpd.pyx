@@ -17,8 +17,6 @@ DEF SAMPLE_RATE = 44100
 DEF CHANNELS_IN = 1
 DEF CHANNELS_OUT = 2
 DEF BLOCKSIZE = 64
-DEF IN_BUF = CHANNELS_IN * BLOCKSIZE
-DEF OUT_BUF = CHANNELS_OUT * BLOCKSIZE
 DEF PRERUN_SLEEP = 2000
 DEF MAX_ATOMS = 1024
 
@@ -26,10 +24,38 @@ DEF MAX_ATOMS = 1024
 # globals
 
 cdef struct UserAudioData:
+    # one input channel, two output channels
     double inbuf[N_TICKS * BLOCKSIZE * CHANNELS_IN]
+    # block size 64, one tick per buffer
     double outbuf[N_TICKS * BLOCKSIZE * CHANNELS_OUT]
+    # stereo outputs are interlaced, s[0] = RIGHT, s[1] = LEFT, etc..
 
 cdef UserAudioData data
+
+
+# ----------------------------------------------------------------------------
+# pure python callbacks
+
+def pd_print(str s):
+    print("p>>", tuple([s]))
+
+def pd_bang(str recv):
+    print(f"b>> BANG {recv}")
+
+def pd_float(str recv, float f):
+    print(f"f>> float {f} {recv}")
+
+def pd_symbol(str recv, str sym):
+    print(f"s>> symbol {sym} {recv}")
+
+def pd_list(*args):
+    print(f"l>> list {args}")
+
+def pd_message(*args):
+    print(f"m>> msg {args}")
+
+def pd_noteon(int channel, int pitch, int velocity):
+    print(f"n>> noteon chan: {channel} pitch: {pitch} vel: {velocity}")
 
 
 # ----------------------------------------------------------------------------
@@ -127,29 +153,7 @@ cdef void midibyte_callback_hook(int port, int byte):
     if __CALLBACKS['midibyte_callback']:
         __CALLBACKS['midibyte_callback'](port, byte)
 
-# ----------------------------------------------------------------------------
-# pure python callbacks
 
-def pd_print(str s):
-    print("p>>", s.strip())
-
-def pd_bang(str recv):
-    print(f"b>> BANG {recv}")
-
-def pd_float(str recv, float f):
-    print(f"f>> float {f} {recv}")
-
-def pd_symbol(str recv, str sym):
-    print(f"s>> symbol {sym} {recv}")
-
-def pd_list(*args):
-    print(f"l>> list {args}")
-
-def pd_message(*args):
-    print(f"m>> msg {args}")
-
-def pd_noteon(int channel, int pitch, int velocity):
-    print(f"n>> noteon chan: {channel} pitch: {pitch} vel: {velocity}")
 
 # ----------------------------------------------------------------------------
 # helper functions
@@ -538,7 +542,7 @@ cdef int write_array(const char *name, int offset, const float *src, int n):
 def send_bang(recv):
     """send a bang to a destination receiver
 
-    ex: libpd_bang("foo") will send a bang to [s foo] on the next tick
+    ex: send_bang("foo") will send a bang to [s foo] on the next tick
     returns 0 on success or -1 if receiver name is non-existent
     """
     cdef bytes _recv = recv.encode()
@@ -547,7 +551,7 @@ def send_bang(recv):
 def send_float(recv, float x):
     """send a float to a destination receiver
 
-    ex: libpd_float("foo", 1) will send a 1.0 to [s foo] on the next tick
+    ex: send_float("foo", 1) will send a 1.0 to [s foo] on the next tick
     returns 0 on success or -1 if receiver name is non-existent
     """
     cdef bytes _recv = recv.encode()
@@ -556,7 +560,7 @@ def send_float(recv, float x):
 def send_symbol(recv, symbol):
     """send a symbol to a destination receiver
 
-    ex: libpd_symbol("foo", "bar") will send "bar" to [s foo] on the next tick
+    ex: send_symbol("foo", "bar") will send "bar" to [s foo] on the next tick
     returns 0 on success or -1 if receiver name is non-existent
     """
     cdef bytes _recv = recv.encode()
@@ -658,6 +662,18 @@ def exists(recv: str) -> bool:
     """
     return libpd.libpd_exists(recv.encode('utf-8'))
 
+def release():
+    """shutdown libpd and releases all resources
+
+    close all open patches and unsubscribe to all subscriptions
+    """
+    for p in __LIBPD_PATCHES.values():
+        close_patch(p)
+    __LIBPD_PATCHES.clear()
+
+    for p in __LIBPD_SUBSCRIPTIONS.values():
+        unsubscribe(p)
+    __LIBPD_SUBSCRIPTIONS.clear()
 
 def set_print_callback(callback):
     """set the print receiver callback, prints to stdout by default
