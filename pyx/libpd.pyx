@@ -1,3 +1,5 @@
+import array
+
 cimport pd
 cimport libpd
 cimport libportaudio
@@ -57,6 +59,14 @@ def pd_message(*args):
 def pd_noteon(int channel, int pitch, int velocity):
     print(f"n>> noteon chan: {channel} pitch: {pitch} vel: {velocity}")
 
+def init_hooks():
+    """initialize all default hooks"""
+    set_print_callback(pd_print)
+    set_bang_callback(pd_bang)
+    set_float_callback(pd_float)
+    set_symbol_callback(pd_symbol)
+    set_message_callback(pd_message)
+    set_list_callback(pd_list)
 
 # ----------------------------------------------------------------------------
 # message and midi callback slots
@@ -350,7 +360,7 @@ def open_patch(name, dir="."):
 
     returns a patch id
     """
-    ptr = libpd.libpd_openfile(name.encode('utf-8'), dir.encode('utf-8'))
+    cdef void* ptr = libpd.libpd_openfile(name.encode('utf-8'), dir.encode('utf-8'))
     if not ptr:
         raise IOError("unable to open patch: %s/%s" % (dir, name))
     patch_id = libpd.libpd_getdollarzero(ptr)
@@ -359,9 +369,8 @@ def open_patch(name, dir="."):
 
 def close_patch(patch_id):
     """close the open patch givens its id"""
-    cdef void* ptr = <void*>__LIBPD_PATCHES[patch_id]
-    libpd.libpd_closefile(ptr)
-    del __LIBPD_PATCHES[patch_id]
+    cdef uintptr_t ptr = <uintptr_t>__LIBPD_PATCHES[patch_id]
+    libpd.libpd_closefile(<void*>ptr)
 
 #-------------------------------------------------------------------------
 # Audio processing
@@ -653,7 +662,6 @@ def unsubscribe(source: str):
     """unsubscribe and free a source receiver object created by libpd_bind()"""
     cdef uintptr_t ptr = <uintptr_t>__LIBPD_SUBSCRIPTIONS[source]
     libpd.libpd_unbind(<void*>ptr)
-    del __LIBPD_SUBSCRIPTIONS[source]
 
 def exists(recv: str) -> bool:
     """check if a source receiver object exists with a given name
@@ -667,11 +675,11 @@ def release():
 
     close all open patches and unsubscribe to all subscriptions
     """
-    for p in __LIBPD_PATCHES.values():
+    for p in __LIBPD_PATCHES.keys():
         close_patch(p)
     __LIBPD_PATCHES.clear()
 
-    for p in __LIBPD_SUBSCRIPTIONS.values():
+    for p in __LIBPD_SUBSCRIPTIONS.keys():
         unsubscribe(p)
     __LIBPD_SUBSCRIPTIONS.clear()
 
@@ -1018,4 +1026,21 @@ def pd_version() -> str:
     cdef int major, minor, bugfix
     pd.sys_getversion(&major, &minor, &bugfix)
     return f'{major}.{minor}.{bugfix}'
+
+
+#-------------------------------------------------------------------------
+# class helper
+
+# class PdManager:
+#     def __init__(self, in_channels, out_channels, samplerate, ticks):
+#         self.__ticks = ticks
+#         self.__out_bufffer = array.array('b',
+#             '\x00\x00'.encode() * out_channels * libpd_blocksize())
+#         dsp(1)
+#         init_audio(in_channels, out_channels, samplerate)
+
+#     def process(self, in_buffer):
+#         # libpd_process_short(self.__ticks, in_buffer, self.__out_bufffer)
+#         process_double(self.__ticks, in_buffer, self.__out_bufffer)
+#         return self.__out_bufffer
 
