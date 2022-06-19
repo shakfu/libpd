@@ -19,9 +19,9 @@ a translation of the cpp implementation to cython
     #define HAVE_UNISTD_H
 #endif
 
+import logging
+
 ctypedef struct _atom t_atom
-
-
 
 
 cdef class PdBase:
@@ -42,6 +42,7 @@ cdef class PdBase:
     """
     def __cinit__(self):
         self.clear()
+        self.log = logging.getLogger(self.__name__)
         PdContext.instance().addBase()
 
     def __dealloc__(self):
@@ -59,7 +60,7 @@ cdef class PdBase:
         set the audio latency by setting the libpd ticks per buffer:
         ticks per buffer * lib pd block size (always 64)
 
-        ie 4 ticks per buffer * 64 = buffer len of 512
+        ie 4 ticks per buffer * 64 = buffer length of 512
 
         you can call this again after loading patches & setting receivers
         in order to update the audio settings
@@ -68,7 +69,7 @@ cdef class PdBase:
         if you experience audio dropouts (audible clicks), increase the
         ticks per buffer
 
-        set queued = true to use the built in ringbuffers for message and
+        set queued = True to use the built in ringbuffers for message and
         midi event passing, you will then need to call receive_messages() and
         receive_midi() in order to pass messages from the ringbuffers to your
         PdReceiver and PdMidiReceiver implementations
@@ -76,7 +77,7 @@ cdef class PdBase:
         the queued ringbuffers are useful when you need to receive events
         on a gui thread and don't want to use locking
 
-        return true if setup successfully
+        return True if setup successfully
 
         note: must be called before processing
         """
@@ -110,9 +111,8 @@ cdef class PdBase:
         """clear the current pd search path."""
         libpd.libpd_clear_search_path()
 
-
-# \section Opening Patches
-
+# ----------------------------------------------------------------------------
+# Opening Patches
 
     def open_patch(str patch, str path) -> Patch:
         """open a patch file (aka somefile.pd) at a specified parent dir path
@@ -152,7 +152,7 @@ cdef class PdBase:
         return open_patch(patch.filename(), patch.path())
 
 
-    def void close_patch(self, patch: str):
+    def close_patch(self, patch: str):
         """close a patch file
             
         takes only the patch's basename (filename without extension)
@@ -193,7 +193,7 @@ cdef class PdBase:
     cdef bint process_float(self, int ticks, const float *in_buffer, float *out_buffer) nogil:
         """process float buffers for a given number of ticks
         
-        returns false on error
+        returns False on error
         """
         return libpd.libpd_process_float(ticks, in_buffer, out_buffer) == 0
 
@@ -201,7 +201,7 @@ cdef class PdBase:
     cdef bint process_short(self, int ticks, const short *in_buffer, short *out_buffer) nogil:
         """process short buffers for a given number of ticks
         
-        returns false on error
+        returns False on error
         """
         return libpd.libpd_process_short(ticks, in_buffer, out_buffer) == 0
 
@@ -209,7 +209,7 @@ cdef class PdBase:
     cdef bint process_double(self, int ticks, const double *in_buffer, double *out_buffer) nogil:
         """process double buffers for a given number of ticks
         
-        returns false on error
+        returns False on error
         """
         return libpd.libpd_process_double(ticks, in_buffer, out_buffer) == 0
 
@@ -217,7 +217,7 @@ cdef class PdBase:
     cdef bint process_raw(self, float *in_buffer, float *out_buffer) nogil:
         """process one pd tick, writes raw float data to/from buffers
         
-        returns false on error
+        returns False on error
         """
         return libpd.libpd_process_raw(in_buffer, out_buffer) == 0
 
@@ -225,7 +225,7 @@ cdef class PdBase:
     cdef bint process_raw_short(self, short *in_buffer, short *out_buffer) nogil:
         """process one pd tick, writes raw short data to/from buffers
         
-        returns false on error
+        returns False on error
         """
         return libpd.libpd_process_raw_short(in_buffer, out_buffer) == 0
 
@@ -233,37 +233,33 @@ cdef class PdBase:
     cdef bint process_raw_double(self, double *in_buffer, double *out_buffer) nogil:
         """process one pd tick, writes raw double data to/from buffers
         
-        returns false on error
+        returns False on error
         """
         return libpd.libpd_process_raw_double(in_buffer, out_buffer) == 0
 
 # ----------------------------------------------------------------------------
 # Audio Processing Control
 
-    # start/stop audio processing
-    #
-    # in general, once started, you won't need to turn off audio
-    #
-    # shortcut for [ pd dsp 1( & [ pd dsp 0(
-    #
     def compute_audio(self, state: bool):
+        """start/stop audio processing
+
+        in general, once started, you won't need to turn off audio
+
+        shortcut for [ pd dsp 1( & [ pd dsp 0(
+        """
         PdContext.instance().compute_audio(state)
 
 # ----------------------------------------------------------------------------
 # Message Receiving
 
 
-    # subscribe to messages sent by a pd send source
-    #
-    # aka this like a virtual pd receive object
-    #
-    #     [r source]
-    #     |
-    #
     def subscribe(self, source: str):
-        if(exists(source)):
-            std::cerr << "Pd: unsubscribe: ignoring duplicate source"
-                      << std::endl
+        """subscribe to messages sent by a pd send source
+
+        aka this like a virtual pd receive object [r source]
+        """
+        if(self.exists(source)):
+            self.log.warn("Pd: unsubscribe: ignoring duplicate source")
             return
     
         void *pointer = libpd.libpd_bind(source.encode('utf-8'))
@@ -274,31 +270,30 @@ cdef class PdBase:
     
 
 
-    # unsubscribe from messages sent by a pd send source
     def unsubscribe(self, source: str):
+        """unsubscribe from messages sent by a pd send source"""
         std::map<str,void*> &sources = PdContext.instance().sources
         std::map<str,void*>::iterator iter
         iter = sources.find(source)
         if(iter == sources.end()):
-            std::cerr << "Pd: unsubscribe: ignoring unknown source"
-                      << std::endl
+            self.log.warning("Pd: unsubscribe: ignoring unknown source")
             return
     
         libpd.libpd_unbind(iter->second)
         sources.erase(iter)
 
 
-    # is a pd send source subscribed?
     def exists(self, source: str) -> bool:
+        """is a pd send source subscribed?"""
         std::map<str,void*> &sources = PdContext.instance().sources
         if(sources.find(source) != sources.end()):
-            return true
+            return True
     
-        return false
+        return False
 
 
-    #/ receivers will be unsubscribed from *all* pd send sources
     def unsubscribe_all(self):
+        """receivers will be unsubscribed from *all* pd send sources"""
         std::map<str,void*> &sources = PdContext.instance().sources
         std::map<str,void*>::iterator iter
         for(iter = sources.begin() iter != sources.end() ++iter):
@@ -313,44 +308,44 @@ cdef class PdBase:
 # process the internal message queue if using the ringbuffer
 #
 # internally, libpd will use a ringbuffer to pass messages & midi without
-# needing to require locking if you call init() with queued = true
+# needing to require locking if you call init() with queued = True
 #
 # call these in a loop somewhere in order to receive waiting messages
 # or midi data which are then sent to your PdReceiver & PdMidiReceiver
 #
 
-    # process waiting messages
     def receive_messages(self):
+        """process waiting messages"""
         libpd.libpd_queued_receive_pd_messages()
 
 
-    # process waiting midi messages
     def receive_midi(self):
+        """process waiting midi messages"""
         libpd.libpd_queued_receive_midi_messages()
 
 # ----------------------------------------------------------------------------
 # Event Receiving via Callbacks
 
-    # set the incoming event receiver, disables the event queue
-    #
-    # automatically receives from all currently subscribed sources
-    #
-    # set this to NULL to disable callback receiving and re-enable the
-    # event queue
-    #
-    void set_receiver(pd::PdReceiver *receiver):
+    def set_receiver(self, pd::PdReceiver *receiver):
+        """set the incoming event receiver, disables the event queue
+
+        automatically receives from all currently subscribed sources
+
+        set this to NULL to disable callback receiving and re-enable the
+        event queue
+        """
         PdContext.instance().receiver = receiver
 
 # ----------------------------------------------------------------------------
 # Midi Receiving via Callbacks
 
-    # set the incoming midi event receiver, disables the midi queue
-    #
-    # automatically receives from all midi channels
-    #
-    # set this to NULL to disable midi events and re-enable the midi queue
-    #
-    void set_midi_receiver(pd::PdMidiReceiver *midi_receiver):
+    def set_midi_receiver(self, pd::PdMidiReceiver *midi_receiver):
+        """set the incoming midi event receiver, disables the midi queue
+        
+        automatically receives from all midi channels
+        
+        set this to NULL to disable midi events and re-enable the midi queue
+        """
         PdContext.instance().midi_receiver = midi_receiver
 
 # ----------------------------------------------------------------------------
@@ -390,125 +385,116 @@ cdef class PdBase:
 #     pd.finish_message("test", "msg1")
 #
 
-    # start a compound list or message
     def start_message(self):
+        """start a compound list or message"""
         PdContext &context = PdContext.instance()
-        if(context.bMsgInProgress):
-            std::cerr << "Pd: cannot start message, message in progress"
-                      << std::endl
+        if(context.msg_in_progress):
+            self.log.warn("Pd: cannot start message, message in progress")
             return
     
-        if(libpd.libpd_start_message(context.maxMsgLen) == 0):
-            context.bMsgInProgress = true
-            context.msgType = MSG
+        if(libpd.libpd_start_message(context.max_message_len) == 0):
+            context.msg_in_progress = True
+            context.msg_type = MSG
     
 
-
-    # add a float to the current compound list or message
     def add_float(self, float num):
+        """add a float to the current compound list or message"""
         PdContext &context = PdContext.instance()
-        if(!context.bMsgInProgress):
-            std::cerr << "Pd: cannot add float, message not in progress"
-                      << std::endl
+        if(!context.msg_in_progress):
+            self.log.warn("Pd: cannot add float, message not in progress")
             return
     
-        if(context.msgType != MSG):
-            std::cerr << "Pd: cannot add float, midi byte stream in progress"
-                      << std::endl
+        if(context.msg_type != MSG):
+            self.log.warn("Pd: cannot add float, midi byte stream in progress")
             return
     
-        if(context.curMsgLen+1 >= context.maxMsgLen):
-            std::cerr << "Pd: cannot add float, max message len of "
-                      << context.maxMsgLen << " reached" << std::endl
+        if(context.current_msg_len+1 >= context.max_message_len):
+            self.log.warn("Pd: cannot add float, max message length of "
+                f"{context.max_message_len} reached")
             return
     
         libpd.libpd_add_float(num)
-        context.curMsgLen++
+        context.current_msg_len++
 
 
-    # add a symbol to the current compound list or message
+
     def add_symbol(self, str &symbol):
+        """add a symbol to the current compound list or message"""
         PdContext &context = PdContext.instance()
-        if(!context.bMsgInProgress):
-            std::cerr << "Pd: cannot add symbol, message not in progress"
-                      << std::endl
+        if(!context.msg_in_progress):
+            self.log.warn("Pd: cannot add symbol, message not in progress"
             return
     
-        if(context.msgType != MSG):
-            std::cerr << "Pd: cannot add symbol, midi byte stream in progress"
-                      << std::endl
+        if(context.msg_type != MSG):
+            self.log.warn("Pd: cannot add symbol, midi byte stream in progress"
             return
     
-        if(context.curMsgLen+1 >= context.maxMsgLen):
-            std::cerr << "Pd: cannot add symbol, max message len of "
-                      << context.maxMsgLen << " reached" << std::endl
+        if(context.current_msg_len+1 >= context.max_message_len):
+            self.log.warn("Pd: cannot add symbol, max message length of "
+                      f"context.max_message_len reached")
             return
     
         libpd.libpd_add_symbol(symbol.encode('utf-8'))
-        context.curMsgLen++
+        context.current_msg_len++
 
 
-    # finish and send as a list
     def finish_list(self, str &dest):
+        """finish and send as a list"""
         PdContext &context = PdContext.instance()
-        if(!context.bMsgInProgress):
-            std::cerr << "Pd: cannot finish list, "
-                      << "message not in progress" << std::endl
+        if(!context.msg_in_progress):
+            self.log.warn("Pd: cannot finish list, message not in progress")
             return
     
-        if(context.msgType != MSG):
-            std::cerr << "Pd: cannot finish list, "
-                      << "midi byte stream in progress" << std::endl
+        if(context.msg_type != MSG):
+            self.log.warn("Pd: cannot finish list, midi byte stream in progress")
             return
     
         libpd.libpd_finish_list(dest.encode('utf-8'))
-        context.bMsgInProgress = false
-        context.curMsgLen = 0
+        context.msg_in_progress = False
+        context.current_msg_len = 0
 
 
-    # finish and send as a list with a specific message name
     def finish_message(self, str &dest, str &msg):
+        """finish and send as a list with a specific message name"""
         PdContext &context = PdContext.instance()
-        if(!context.bMsgInProgress):
-            std::cerr << "Pd: cannot finish message, "
-                      << "message not in progress" << std::endl
+        if(!context.msg_in_progress):
+            self.log.warn("Pd: cannot finish message, message not in progress")
             return
     
-        if(context.msgType != MSG):
-            std::cerr << "Pd: cannot finish message, "
-                      << "midi byte stream in progress" << std::endl
+        if(context.msg_type != MSG):
+            self.log.warn("Pd: cannot finish message, midi byte stream in progress")
             return
     
         libpd.libpd_finish_message(dest.encode('utf-8'), msg.encode('utf-8'))
-        context.bMsgInProgress = false
-        context.curMsgLen = 0
+        context.msg_in_progress = False
+        context.current_msg_len = 0
 
 
-    # send a list using the PdBase List type
-    #
-    #     List list
-    #     list.add_symbol("hello")
-    #     list.add_float(1.23)
-    #     pd.sstd::endlist("test", list)
-    #
-    # sends [list hello 1.23( -> [r test]
-    #
-    # stream operators work as well:
-    #
-    #     list << "hello" << 1.23
-    #     pd.sstd::endlist("test", list)
-    #
+
     def send_list(self, str &dest, const pd::List &list):
+        """send a list using the PdBase List type
+
+             List list
+             list.add_symbol("hello")
+             list.add_float(1.23)
+             pd.sstd::endlist("test", list)
+
+         sends [list hello 1.23( -> [r test]
+
+         stream operators work as well:
+
+             list << "hello" << 1.23
+             pd.sstd::endlist("test", list)
+        """
         PdContext &context = PdContext.instance()
-        if(context.bMsgInProgress):
-            std::cerr << "Pd: cannot send list, message in progress"
-                      << std::endl
+        if(context.msg_in_progress):
+            self.log.warning("Pd: cannot send list, message in progress")
             return
     
-        libpd.libpd_start_message(list.len())
-        context.bMsgInProgress = true
+        libpd.libpd_start_message(list.length())
+        context.msg_in_progress = True
         # step through list
-        for(int i = 0 i < (int)list.len() ++i):
+        for(int i = 0 i < (int)list.length() ++i):
             if(list.isFloat(i))
                 add_float(list.getFloat(i))
             else if(list.isSymbol(i))
@@ -517,31 +503,31 @@ cdef class PdBase:
         finish_list(dest)
 
 
-    # send a message using the PdBase List type
-    #
-    #     pd::List list
-    #     list.add_symbol("hello")
-    #     list.add_float(1.23)
-    #     pd.send_message("test", "msg1", list)
-    #
-    # sends a typed message -> [ test msg1 hello 1.23(
-    #
-    # stream operators work as well:
-    #
-    #      list << "hello" << 1.23
-    #     pd.send_message("test", "msg1", list)
-    #
+
     def send_message(self, str dest, str msg, pd::List &list = pd::List()):
+        """send a message using the PdBase List type
+
+             pd::List list
+             list.add_symbol("hello")
+             list.add_float(1.23)
+             pd.send_message("test", "msg1", list)
+
+         sends a typed message -> [ test msg1 hello 1.23(
+
+         stream operators work as well:
+
+              list << "hello" << 1.23
+             pd.send_message("test", "msg1", list)
+        """
         PdContext &context = PdContext.instance()
-        if(context.bMsgInProgress):
-            std::cerr << "Pd: cannot send message, message in progress"
-                      << std::endl
+        if(context.msg_in_progress):
+            self.log.warn("Pd: cannot send message, message in progress")
             return
     
-        libpd.libpd_start_message(list.len())
-        context.bMsgInProgress = true
+        libpd.libpd_start_message(list.length())
+        context.msg_in_progress = True
         # step through list
-        for(int i = 0 i < (int)list.len() ++i):
+        for(int i = 0 i < (int)list.length() ++i):
             if(list.isFloat(i))
                 add_float(list.getFloat(i))
             else if(list.isSymbol(i))
@@ -565,21 +551,22 @@ cdef class PdBase:
 # * touch value         0 - 127
 #
 
-    # send a MIDI note on
-    #
-    # pd does not use note off MIDI messages, so send a note on with vel = 0
-    #
+
     def send_noteon(self, int channel, int pitch, int velocity=64):
+        """send a MIDI note on
+
+        pd does not use note off MIDI messages, so send a note on with vel = 0
+        """
         libpd.libpd_noteon(channel, pitch, velocity)
 
 
-    # send a MIDI control change
     def send_controlchange(int channel, int controller, int value):
+        """send a MIDI control change"""
         libpd.libpd_controlchange(channel, controller, value)
 
 
-    # send a MIDI program change
     def send_programchange(int channel, int value):
+        """send a MIDI program change"""
         libpd.libpd_programchange(channel, value)
 
 
@@ -612,17 +599,17 @@ cdef class PdBase:
     # however, [midiout], [sysexout], & [realtimeout] do not add to the
     # port num, so sending port 1 to [midiout] returns port 1 in PdBase
     #
-    virtual void send_midibyte(const int port, const int value):
+    def send_midibyte(const int port, const int value):
         libpd.libpd_midibyte(port, value)
 
 
     # send a raw MIDI sysex byte
-    virtual void send_sysex(const int port, const int value):
+    def send_sysex(const int port, const int value):
         libpd.libpd_sysex(port, value)
 
 
     # send a raw MIDI realtime byte
-    virtual void send_sysrealtime(const int port, const int value):
+    def send_sysrealtime(const int port, const int value):
         libpd.libpd_sysrealtime(port, value)
 
 # ----------------------------------------------------------------------------
@@ -637,9 +624,8 @@ cdef class PdBase:
 
     # send a bang message
     PdBase& operator<<(const pd::Bang &var):
-        if(PdContext.instance().bMsgInProgress):
-            std::cerr << "Pd: cannot send Bang, message in progress"
-                      << std::endl
+        if(PdContext.instance().msg_in_progress):
+            self.log.warn("Pd: cannot send Bang, message in progress")
             return *this
     
         send_bang(var.dest.encode('utf-8'))
@@ -648,9 +634,8 @@ cdef class PdBase:
 
     # send a float message
     PdBase& operator<<(const pd::Float &var):
-        if(PdContext.instance().bMsgInProgress):
-            std::cerr << "Pd: cannot send Float, message in progress"
-                      << std::endl
+        if(PdContext.instance().msg_in_progress):
+            self.log.warn("Pd: cannot send Float, message in progress")
             return *this
     
         send_float(var.dest.encode('utf-8'), var.num)
@@ -659,9 +644,8 @@ cdef class PdBase:
 
     # send a symbol message
     PdBase& operator<<(const pd::Symbol &var):
-        if(PdContext.instance().bMsgInProgress):
-            std::cerr << "Pd: cannot send Symbol, message in progress"
-                      << std::endl
+        if(PdContext.instance().msg_in_progress):
+            self.log.warn("Pd: cannot send Symbol, message in progress")
             return *this
     
         sendSymbol(var.dest.encode('utf-8'), var.symbol.encode('utf-8'))
@@ -700,7 +684,7 @@ cdef class PdBase:
     # add an integer as a float to the compound message
     PdBase& operator<<(const int var):
         PdContext &context = PdContext.instance()
-        switch(context.msgType):
+        switch(context.msg_type):
             case MSG:
                 add_float((float) var)
                 break
@@ -802,13 +786,12 @@ cdef class PdBase:
     # start a raw byte MIDI message
     PdBase& operator<<(const pd::StartMidi &var):
         PdContext &context = PdContext.instance()
-        if(context.bMsgInProgress):
-            std::cerr << "Pd: cannot start MidiByte stream, "
-                      << "message in progress" << std::endl
+        if(context.msg_in_progress):
+            self.log.warn("Pd: cannot start MidiByte stream, msg in progress")
             return *this
     
-        context.bMsgInProgress = true
-        context.msgType = MIDI
+        context.msg_in_progress = True
+        context.msg_type = MIDI
         context.midiPort = var.port
         return *this
 
@@ -816,13 +799,12 @@ cdef class PdBase:
     # start a raw byte MIDI sysex message
     PdBase& operator<<(const pd::StartSysex &var):
         PdContext &context = PdContext.instance()
-        if(context.bMsgInProgress):
-            std::cerr << "Pd: cannot start Sysex stream, "
-                      << "message in progress" << std::endl
+        if(context.msg_in_progress):
+            self.log.warn("Pd: cannot start Sysex stream, msg in progress")
             return *this
     
-        context.bMsgInProgress = true
-        context.msgType = SYSEX
+        context.msg_in_progress = True
+        context.msg_type = SYSEX
         context.midiPort = var.port
         return *this
 
@@ -830,13 +812,12 @@ cdef class PdBase:
     # start a raw byte MIDI realtime message
     PdBase& operator<<(const pd::StartSysRealTime &var):
         PdContext &context = PdContext.instance()
-        if(context.bMsgInProgress):
-            std::cerr << "Pd: cannot start SysRealRime stream, "
-                      << "message in progress" << std::endl
+        if(context.msg_in_progress):
+            self.log.warn("Pd: cannot start SysRealRime stream, msg in progress")
             return *this
     
-        context.bMsgInProgress = true
-        context.msgType = SYSRT
+        context.msg_in_progress = True
+        context.msg_type = SYSRT
         context.midiPort = var.port
         return *this
 
@@ -844,157 +825,146 @@ cdef class PdBase:
     # finish and send a raw byte MIDI message
     PdBase& operator<<(const pd::Finish &var):
         PdContext &context = PdContext.instance()
-        if(!context.bMsgInProgress):
-            std::cerr << "Pd: cannot finish midi byte stream, "
-                      << "stream not in progress" << std::endl
+        if(!context.msg_in_progress):
+            self.log.warn("Pd: cannot finish midi byte stream, stream not in progress")
             return *this
     
-        if(context.msgType == MSG):
-            std::cerr << "Pd: cannot finish midi byte stream, "
-                      << "message in progress" << std::endl
+        if(context.msg_type == MSG):
+            self.log.warn("Pd: cannot finish midi byte stream, msg in progress")
             return *this
     
-        context.bMsgInProgress = false
-        context.curMsgLen = 0
+        context.msg_in_progress = False
+        context.current_msg_len = 0
         return *this
 
 
     # is a message or byte stream currently in progress?
-    bool isMessageInProgress():
-        return PdContext.instance().bMsgInProgress
+    def is_message_in_progress() -> bool:
+        return PdContext.instance().msg_in_progress
 
 # ----------------------------------------------------------------------------
 # Array Access
 
     # get the size of a pd array
     # returns 0 if array not found
-    int arraySize(str &name):
-        int len = libpd.libpd_arraysize(name.encode('utf-8'))
-        if(len < 0):
-            std::cerr << "Pd: cannot get size of unknown array \""
-                      << name << "\"" << std::endl
+    def array_size(str name) -> int:
+        int length = libpd.libpd_arraysize(name.encode('utf-8'))
+        if(length < 0):
+            self.log.warn(f"Pd: cannot get size of unknown array {name}")
             return 0
     
-        return len
+        return length
 
 
     # (re)size a pd array
     # sizes <= 0 are clipped to 1
-    # returns true on success, false on failure
-    bool resizeArray(str &name, long size):
+    # returns True on success, False on failure
+    def resize_array(str &name, long size) -> bool:
         int ret = libpd.libpd_resize_array(name.encode('utf-8'), size)
         if(ret < 0):
-            std::cerr << "Pd: cannot resize unknown array \"" << name << "\""
-                      << std::endl
-            return false
-    
-        return true
+            self.log.warn(f"Pd: cannot resize unknown array {name}")
+            return False
+        return True
 
 
     # read from a pd array
     #
-    # resizes given vector to readLen, checks readLen and offset
+    # resizes given vector to read_len, checks read_len and offset
     #
-    # returns true on success, false on failure
+    # returns True on success, False on failure
     #
-    # calling without setting readLen and offset reads the whole array:
+    # calling without setting read_len and offset reads the whole array:
     #
     # vector<float> array1
-    # readArray("array1", array1)
+    # read_array("array1", array1)
     #
-    virtual bool readArray(str &name,
-                           std::vector<float> &dest,
-                           int readLen=-1, int offset=0):
-        int len = libpd.libpd_arraysize(name.encode('utf-8'))
-        if(len < 0):
-            std::cerr << "Pd: cannot read unknown array \"" << name << "\""
-                      << std::endl
-            return false
+    def read_array(str &name, std::vector<float> &dest, int read_len=-1, int offset=0) -> bool:
+        int length = libpd.libpd_arraysize(name.encode('utf-8'))
+        if(length < 0):
+            self.log.warn("Pd: cannot read unknown array {name}")
+            return False
     
-        # full array len?
-        if(readLen < 0):
-            readLen = len
+        # full array length?
+        if(read_len < 0):
+            read_len = length
     
-        # check read len
-        else if(readLen > len):
-            std::cerr << "Pd: given read len " << readLen << " > len "
-                      << len << " of array \"" << name << "\"" << std::endl
-            return false
+        # check read length
+        else if(read_len > length):
+            self.log.warn(
+                f"Pd: given read length {read_len} > length {length} of array {name}"
+            )
+            return False
     
         # check offset
-        if(offset + readLen > len):
-            std::cerr << "Pd: given read len and offset > len " << readLen
-                      << " of array \"" << name << "\"" << std::endl
-            return false
+        if(offset + read_len > length):
+            self.log.warn("Pd: given read length and offset > length {read_len} of array {name}")
+            return False
     
         # resize if necessary
-        if(dest.size() != readLen):
-            dest.resize(readLen, 0)
+        if(dest.size() != read_len):
+            dest.resize(read_len, 0)
     
-        if(libpd.libpd_read_array(&dest[0], name.encode('utf-8'), offset, readLen) < 0):
-            std::cerr << "Pd: libpd.libpd_read_array failed for array \""
-                      << name << "\"" << std::endl
-            return false
+        if(libpd.libpd_read_array(&dest[0], name.encode('utf-8'), offset, read_len) < 0):
+            self.log.warn("Pd: libpd.libpd_read_array failed for array {name}")
+            return False
     
-        return true
+        return True
 
 
     # write to a pd array
     #
-    # calling without setting writeLen and offset writes the whole array:
+    # calling without setting write_len and offset writes the whole array:
     #
-    # writeArray("array1", array1)
+    # write_array("array1", array1)
     #
-    virtual bool writeArray(str &name,
+    virtual bool write_array(str &name,
                             std::vector<float> &source,
-                            int writeLen=-1, int offset=0):
-        int len = libpd.libpd_arraysize(name.encode('utf-8'))
-        if(len < 0):
-            std::cerr << "Pd: cannot write to unknown array \"" << name << "\""
-                      << std::endl
-            return false
+                            int write_len=-1, int offset=0):
+        int length = libpd.libpd_arraysize(name.encode('utf-8'))
+        if(length < 0):
+            self.log.warn("Pd: cannot write to unknown array {name}")
+            return False
     
 
-        # full array len?
-        if(writeLen < 0):
-            writeLen = len
+        # full array length?
+        if(write_len < 0):
+            write_len = length
     
 
-        # check write len
-        else if(writeLen > len):
-            std::cerr << "Pd: given write len " << writeLen << " > len " << len
-                 << " of array \"" << name << "\"" << std::endl
-            return false
+        # check write length
+        else if(write_len > length):
+            self.log.warn("Pd: given write length {write_len} > length {length} of array {name}")
+            return False
     
 
         # check offset
-        if(offset+writeLen > len):
-            std::cerr << "Pd: given write len and offset > len " << writeLen
+        if(offset+write_len > length):
+            self.log.warn("Pd: given write length and offset > length " << write_len
                  << " of array \"" << name << "\"" << std::endl
-            return false
+            return False
     
 
         if(libpd.libpd_write_array(name.encode('utf-8'), offset,
-                             &source[0], writeLen) < 0):
-            std::cerr << "Pd: libpd.libpd_write_array failed for array \""
+                             &source[0], write_len) < 0):
+            self.log.warn("Pd: libpd.libpd_write_array failed for array \""
                  << name << "\"" << std::endl
-            return false
+            return False
     
-        return true
+        return True
 
 
     # clear array and set to a specific value
-    virtual void clearArray(str &name, int value=0):
-        int len = libpd.libpd_arraysize(name.encode('utf-8'))
-        if(len < 0):
-            std::cerr << "Pd: cannot clear unknown array \""
+    virtual void clear_array(str &name, int value=0):
+        int length = libpd.libpd_arraysize(name.encode('utf-8'))
+        if(length < 0):
+            self.log.warn("Pd: cannot clear unknown array \""
                  << name << "\"" << std::endl
             return
     
         std::vector<float> array
-        array.resize(len, value)
-        if(libpd.libpd_write_array(name.encode('utf-8'), 0, &array[0], len) < 0):
-            std::cerr << "Pd: libpd.libpd_write_array failed while clearing array \""
+        array.resize(length, value)
+        if(libpd.libpd_write_array(name.encode('utf-8'), 0, &array[0], length) < 0):
+            self.log.warn("Pd: libpd.libpd_write_array failed while clearing array \""
                  << name << "\"" << std::endl
     
 
@@ -1002,29 +972,29 @@ cdef class PdBase:
 # Utils
 
     # has the global pd instance been initialized?
-    bool isInited():
-        return PdContext.instance().isInited()
+    bool is_inited():
+        return PdContext.instance().is_inited()
 
 
     # is the global pd instance using the ringerbuffer queue
     # for message padding?
-    bool isQueued():
-        return PdContext.instance().isQueued()
+    bool is_queued():
+        return PdContext.instance().is_queued()
 
 
     # get the blocksize of pd (sample length per channel)
-    static int blockSize():
+    static int blocksize():
         return libpd.libpd_blocksize()
 
 
     # set the max length of messages and lists, default: 32
-    void setMaxMessageLen(unsigned int len):
-        PdContext.instance().maxMsgLen = len
+    void set_max_message_len(unsigned int length):
+        PdContext.instance().max_message_len = length
 
 
     # get the max length of messages and lists
-    unsigned int maxMessageLen():
-        return PdContext.instance().maxMsgLen
+    unsigned int max_message_len():
+        return PdContext.instance().max_message_len
 
 
 protected:
@@ -1091,7 +1061,7 @@ protected:
                 # init libpd, should only be called once!
                 if(!bLibPdInited):
                     libpd.libpd_queued_init()
-                    bLibPdInited = true
+                    bLibPdInited = True
             
         
             else:
@@ -1115,7 +1085,7 @@ protected:
                 # init libpd, should only be called once!
                 if(!bLibPdInited):
                     libpd.libpd_init()
-                    bLibPdInited = true
+                    bLibPdInited = True
             
         
 
@@ -1123,9 +1093,9 @@ protected:
             if(libpd.libpd_init_audio(numInChannels,
                                 numOutChannels,
                                 sampleRate) != 0):
-                return false
+                return False
         
-            bInited = true
+            bInited = True
 
             return bInited
     
@@ -1135,7 +1105,7 @@ protected:
 
             # detach callbacks
             if(bInited):
-                compute_audio(false)
+                compute_audio(False)
                 if(bQueued):
                     libpd.libpd_set_queued_printhook(NULL)
                     libpd.libpd_set_concatenated_printhook(NULL)
@@ -1175,11 +1145,11 @@ protected:
                     libpd.libpd_set_midibytehook(NULL)
             
         
-            bInited = false
-            bQueued = false
+            bInited = False
+            bQueued = False
 
-            bMsgInProgress = false
-            curMsgLen = 0
+            msg_in_progress = False
+            current_msg_len = 0
             msgType = MSG
             midiPort = 0
     
@@ -1193,17 +1163,17 @@ protected:
     
 
         # is the instance inited?
-        inline bool isInited():return bInited}
+        inline bool is_inited():return bInited}
 
         # is this instance queued?
-        inline bool isQueued():return bQueued}
+        inline bool is_queued():return bQueued}
 
 # ----------------------------------------------------------------------------
     # Variables
 
-        bool bMsgInProgress    #< is a compound message being constructed?
-        int maxMsgLen          #< maximum allowed message length
-        int curMsgLen          #< the length of the current message
+        bool msg_in_progress    #< is a compound message being constructed?
+        int max_message_len     #< maximum allowed message length
+        int current_msg_len     #< the length of the current message
 
         # compound message status
         PdBase::MsgType msgType
@@ -1225,14 +1195,14 @@ protected:
 
         # hide all the constructors, copy functions here
         PdContext():                      # cannot create
-            bLibPdInited = false
-            bInited = false
-            bQueued = false
-            numBases = false
+            bLibPdInited = False
+            bInited = False
+            bQueued = False
+            numBases = False
             receiver = NULL
             midi_receiver = NULL
             clear()
-            maxMsgLen = 32
+            max_message_len = 32
     
         virtual ~PdContext():             # cannot destroy
             # triple check clear
