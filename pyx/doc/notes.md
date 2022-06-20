@@ -18,7 +18,9 @@ Steps to writing a PortAudio application using the callback technique:
 6. Close the stream and terminate the library.
 
 
+
 ## Links
+
 
 ### Threading
 
@@ -94,4 +96,7 @@ Steps to writing a PortAudio application using the callback technique:
 - [forum question](https://www.mail-archive.com/pd-dev@lists.iem.at/msg02689.html)
 
 
+### Cython singleton
+
+- [how to make a cython singletone](https://stackoverflow.com/questions/51263233/singleton-in-cython-handled-by-classmethod)
 
