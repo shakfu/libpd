@@ -1,5 +1,3 @@
-import array
-
 cimport pd
 cimport libpd
 cimport libportaudio
@@ -10,6 +8,8 @@ from libc.string cimport strcpy, strlen
 from libc.stdio cimport printf, fprintf, stderr, FILE
 from libc.stdint cimport uintptr_t
 from posix.unistd cimport sleep
+
+import array
 
 # ----------------------------------------------------------------------------
 # constants
@@ -1031,16 +1031,22 @@ def pd_version() -> str:
 #-------------------------------------------------------------------------
 # class helper
 
-# class PdManager:
-#     def __init__(self, in_channels, out_channels, samplerate, ticks):
-#         self.__ticks = ticks
-#         self.__out_bufffer = array.array('b',
-#             '\x00\x00'.encode() * out_channels * libpd_blocksize())
-#         dsp(1)
-#         init_audio(in_channels, out_channels, samplerate)
 
-#     def process(self, in_buffer):
-#         # libpd_process_short(self.__ticks, in_buffer, self.__out_bufffer)
-#         process_double(self.__ticks, in_buffer, self.__out_bufffer)
-#         return self.__out_bufffer
+cdef class PdManager:
+    cdef const short* __out_bufffer
+
+    def __init__(self, int in_channels, int out_channels, int samplerate, int ticks):
+        self.__ticks = ticks
+        self.__out_bufffer = NULL
+        dsp(1)
+        init_audio(in_channels, out_channels, samplerate)
+
+    cdef process(self, short* in_buffer):
+        process_short(self.__ticks, in_buffer, self.__out_bufffer)
+        res = array.array('b', '\x00\x00'.encode() * CHANNELS_OUT * libpd_blocksize())
+        res.data = <int>self.__out_bufffer
+        return res
+
+#         # process_double(self.__ticks, in_buffer, self.__out_bufffer)
+#         # return self.__out_bufffer
 
