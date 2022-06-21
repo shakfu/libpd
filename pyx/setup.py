@@ -60,6 +60,16 @@ LIBPD_EXTENSION = Extension("libpd", ["libpd.pyx"],
     extra_objects = EXTRA_OBJECTS,
 )
 
+import numpy
+
+DEMO_EXTENSION = Extension("demo", ["demo.pyx"],
+    define_macros = DEFINE_MACROS,
+    include_dirs = INCLUDE_DIRS + [numpy.get_include()],
+    libraries = LIBRARIES,
+    library_dirs = LIBRARY_DIRS,
+    extra_objects = EXTRA_OBJECTS,
+)
+
 extensions = []
 
 if os.getenv('CYPD'):
@@ -67,6 +77,9 @@ if os.getenv('CYPD'):
 
 elif os.getenv('LIBPD'):
     extensions.append(LIBPD_EXTENSION)
+
+elif os.getenv('DEMO'):
+    extensions.append(DEMO_EXTENSION)
 
 else:
     extensions.extend([

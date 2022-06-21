@@ -13,6 +13,10 @@ libpd:
 	@LIBPD=1 python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./libpd.c
 
+demo:
+	@DEMO=1 python3 setup.py build_ext --inplace	
+	@rm -rf ./build ./demo.c
+
 audio_test:
 	@echo "generating portaudio c implementation test"
 	@gcc -o test_audio tests/test_audio.c ../libs/libpd.a \
