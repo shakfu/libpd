@@ -392,18 +392,18 @@ def init_audio(int in_channels, int out_channels, int sample_rate):
         out_channels,
         sample_rate)
 
-cdef int process_float(const int ticks, const float *inBuffer, float *outBuffer) nogil:
-    """process interleaved float samples from inBuffer -> libpd -> outBuffer
+cdef int process_float(const int ticks, const float *in_buffer, float *out_buffer) nogil:
+    """process interleaved float samples from in_buffer -> libpd -> out_buffer
 
     buffer sizes are based on # of ticks and channels where:
         size = ticks * libpd_blocksize() * (in/out)channels
     returns 0 on success
     """
-    return libpd.libpd_process_float(ticks, inBuffer, outBuffer)
+    return libpd.libpd_process_float(ticks, in_buffer, out_buffer)
 
 
-cdef int process_short(const int ticks, const short *inBuffer, short *outBuffer) nogil:
-    """process interleaved short samples from inBuffer -> libpd -> outBuffer
+cdef int process_short(const int ticks, const short *in_buffer, short *out_buffer) nogil:
+    """process interleaved short samples from in_buffer -> libpd -> out_buffer
 
     buffer sizes are based on # of ticks and channels where:
         size = ticks * libpd_blocksize() * (in/out)channels
@@ -412,31 +412,31 @@ cdef int process_short(const int ticks, const short *inBuffer, short *outBuffer)
     note: for efficiency, does *not* clip input
     returns 0 on success
     """
-    return libpd.libpd_process_short(ticks, inBuffer, outBuffer)
+    return libpd.libpd_process_short(ticks, in_buffer, out_buffer)
 
-cdef int process_double(const int ticks, const double *inBuffer, double *outBuffer) nogil:
-    """process interleaved double samples from inBuffer -> libpd -> outBuffer
+cdef int process_double(const int ticks, const double *in_buffer, double *out_buffer) nogil:
+    """process interleaved double samples from in_buffer -> libpd -> out_buffer
 
     buffer sizes are based on # of ticks and channels where:
         size = ticks * libpd_blocksize() * (in/out)channels
     returns 0 on success
     """
-    return libpd.libpd_process_double(ticks, inBuffer, outBuffer)
+    return libpd.libpd_process_double(ticks, in_buffer, out_buffer)
 
 
-cdef int process_raw(const float *inBuffer, float *outBuffer) nogil:
-    """process non-interleaved float samples from inBuffer -> libpd -> outBuffer
+cdef int process_raw(const float *in_buffer, float *out_buffer) nogil:
+    """process non-interleaved float samples from in_buffer -> libpd -> out_buffer
 
     copies buffer contents to/from libpd without striping
     buffer sizes are based on a single tick and # of channels where:
         size = libpd_blocksize() * (in/out)channels
     returns 0 on success
     """
-    return libpd.libpd_process_raw(inBuffer, outBuffer)
+    return libpd.libpd_process_raw(in_buffer, out_buffer)
 
 
-cdef int process_raw_short(const short *inBuffer, short *outBuffer) nogil:
-    """process non-interleaved short samples from inBuffer -> libpd -> outBuffer
+cdef int process_raw_short(const short *in_buffer, short *out_buffer) nogil:
+    """process non-interleaved short samples from in_buffer -> libpd -> out_buffer
 
     copies buffer contents to/from libpd without striping
     buffer sizes are based on a single tick and # of channels where:
@@ -446,18 +446,18 @@ cdef int process_raw_short(const short *inBuffer, short *outBuffer) nogil:
     note: for efficiency, does *not* clip input
     returns 0 on success
     """
-    return libpd.libpd_process_raw_short(inBuffer, outBuffer)
+    return libpd.libpd_process_raw_short(in_buffer, out_buffer)
 
 
-cdef int process_raw_double(const double *inBuffer, double *outBuffer) nogil:
-    """process non-interleaved double samples from inBuffer -> libpd -> outBuffer
+cdef int process_raw_double(const double *in_buffer, double *out_buffer) nogil:
+    """process non-interleaved double samples from in_buffer -> libpd -> out_buffer
 
     copies buffer contents to/from libpd without striping
     buffer sizes are based on a single tick and # of channels where:
         size = libpd_blocksize() * (in/out)channels
     returns 0 on success
     """
-    return libpd.libpd_process_raw_double(inBuffer, outBuffer)
+    return libpd.libpd_process_raw_double(in_buffer, out_buffer)
 
 #-------------------------------------------------------------------------
 # Atom operations
