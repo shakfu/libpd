@@ -4,6 +4,8 @@ cimport pd
 cimport libpd
 cimport libportaudio
 
+from libc.string cimport strcpy, strlen
+
 from cpython cimport array
 import array
 
@@ -136,3 +138,27 @@ def process_float2(int ticks, array.array in_buffer, array.array out_buffer = No
 
     libpd.libpd_process_float(ticks, <const float*>inbuff, <float*>outbuff)
     return out_buffer
+
+
+# ----------------------------------------------------------------------------
+# test cplay
+
+cdef extern from "tests/task.h" nogil:
+    int cplay(char* name, char* dir)
+
+
+def play(name: str, dir: str):
+    cdef char[512] filename
+    cdef char[512] dirname
+
+    strcpy(filename, name.encode('utf-8'))
+    strcpy(dirname, dir.encode('utf-8'))
+
+    with nogil:
+        cplay(filename, dirname)
+
+
+
+
+
+

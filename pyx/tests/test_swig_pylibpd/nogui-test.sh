@@ -1,2 +1,2 @@
-/Applications/Studio/Pd-0.51-4.app/Contents/Resources/bin/pd -nogui mytest.pd
+/Applications/Studio/Pd-0.52-2.app/Contents/Resources/bin/pd -nogui mytest.pd
 
