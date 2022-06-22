@@ -231,6 +231,13 @@ cdef int audio_callback(const void *inputBuffer, void *outputBuffer,
             out[i] = data.outbuf[i]
     return 0
 
+
+# cdef void compute_audio(int switch) nogil:
+#     libpd.libpd_start_message(1)
+#     libpd.libpd_add_float(switch)
+#     libpd.libpd_finish_message("pd", "dsp")
+
+
 def dsp(on=True):
     """easy dsp switch"""
     if on:
@@ -262,35 +269,38 @@ def play(str name, str dir='.', int sample_rate=SAMPLE_RATE,
     # open patch
     handle = libpd.libpd_openfile(name.encode('utf8'), dir.encode('utf8'))
     # handle is assigned here
-    
-    # Initialize our data for use by callback.
-    for i in range(blocksize):
-        data.outbuf[i] = 0
-    
-    # Initialize library before making any other calls.
-    err = libportaudio.Pa_Initialize()
-    if err != libportaudio.paNoError:
-        terminate(err, handle)
 
-    # Open an audio I/O stream.
-    err = libportaudio.Pa_OpenDefaultStream(
-        &stream,
-        in_channels,            # input channels
-        out_channels,           # output channels
-        libportaudio.paFloat32, # 32 bit floating point output
-        sample_rate,            # sample rate
-        <long>blocksize,        # frames per buffer
-        audio_callback,
-        &data)
+    with nogil:
+        
+        # Initialize our data for use by callback.
+        for i in range(blocksize):
+            data.outbuf[i] = 0
+        
+        # Initialize library before making any other calls.
+        err = libportaudio.Pa_Initialize()
+        if err != libportaudio.paNoError:
+            terminate(err, handle)
 
-    if (err != libportaudio.paNoError):
-        terminate(err, handle)
 
-    err = libportaudio.Pa_StartStream(stream)
-    if (err != libportaudio.paNoError):
-        terminate(err, handle)
+        # Open an audio I/O stream.
+        err = libportaudio.Pa_OpenDefaultStream(
+            &stream,
+            in_channels,            # input channels
+            out_channels,           # output channels
+            libportaudio.paFloat32, # 32 bit floating point output
+            sample_rate,            # sample rate
+            <long>blocksize,        # frames per buffer
+            audio_callback,
+            &data)
 
-    libportaudio.Pa_Sleep(PRERUN_SLEEP)
+        if (err != libportaudio.paNoError):
+            terminate(err, handle)
+
+        err = libportaudio.Pa_StartStream(stream)
+        if (err != libportaudio.paNoError):
+            terminate(err, handle)
+
+    libportaudio.Pa_Sleep(PRERUN_SLEEP) # will crash if inside the 'nogil' block
 
     # pd dsp on
     dsp(1)
@@ -305,8 +315,8 @@ def play(str name, str dir='.', int sample_rate=SAMPLE_RATE,
     if err != libportaudio.paNoError:
         terminate(err, handle)
 
-    libportaudio.Pa_Terminate()
-    print(f"Ending Patch session: {err}")
+    libportaudio.Pa_Terminate() 
+    # print(f"Ending Patch session: {err}")
 
     libpd.libpd_closefile(handle)
 
@@ -1032,20 +1042,20 @@ def pd_version() -> str:
 # class helper
 
 
-cdef class PdManager:
-    cdef const short* __out_bufffer
+# cdef class PdManager:
+#     cdef const short* __out_bufffer
 
-    def __init__(self, int in_channels, int out_channels, int samplerate, int ticks):
-        self.__ticks = ticks
-        self.__out_bufffer = NULL
-        dsp(1)
-        init_audio(in_channels, out_channels, samplerate)
+#     def __init__(self, int in_channels, int out_channels, int samplerate, int ticks):
+#         self.__ticks = ticks
+#         self.__out_bufffer = NULL
+#         dsp(1)
+#         init_audio(in_channels, out_channels, samplerate)
 
-    cdef process(self, short* in_buffer):
-        process_short(self.__ticks, in_buffer, self.__out_bufffer)
-        res = array.array('b', '\x00\x00'.encode() * CHANNELS_OUT * libpd_blocksize())
-        res.data = <int>self.__out_bufffer
-        return res
+#     cdef process(self, short* in_buffer):
+#         process_short(self.__ticks, in_buffer, self.__out_bufffer)
+#         res = array.array('b', '\x00\x00'.encode() * CHANNELS_OUT * libpd_blocksize())
+#         res.data = <int>self.__out_bufffer
+#         return res
 
 #         # process_double(self.__ticks, in_buffer, self.__out_bufffer)
 #         # return self.__out_bufffer
