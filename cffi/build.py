@@ -1,4 +1,74 @@
+import os
+from cffi import FFI
+ffibuilder = FFI()
+
+os.environ['LDFLAGS'] = " ".join([
+    "-framework CoreServices",
+    "-framework CoreFoundation",
+    "-framework AudioUnit",
+    "-framework AudioToolbox",
+    "-framework CoreAudio",
+])
+
+DEFINE_MACROS = [
+    ('PD', 1),
+    ('HAVE_UNISTD_H', 1),
+    ('HAVE_LIBDL', 1),
+    ('USEAPI_DUMMY', 1),
+    ('LIBPD_EXTRA', 1),
+]
+
+INCLUDE_DIRS = [
+    "/usr/local/include",
+    "../libpd_wrapper",
+    "../libpd_wrapper/util",
+    "../pure-data/src",
+]
+
+LIBRARIES = [
+    'm',
+    'dl',
+    'pthread',
+    'portaudio', # requires portaudio to be installed system-wide
+]
+
+LIBRARY_DIRS = [
+    '/usr/local/lib',
+    '../libs',
+]
+
+EXTRA_OBJECTS = [
+    '../libs/libpd.a',
+]
+
+
+
+# cdef() expects a single string declaring the C types, functions and
+# globals needed to use the shared object. It must be in valid C syntax.
+ffibuilder.cdef("""
 // libpd api reference
+
+typedef enum
+{
+    A_NULL,
+    A_FLOAT,
+    A_SYMBOL,
+    A_POINTER,
+    A_SEMI,
+    A_COMMA,
+    A_DEFFLOAT,
+    A_DEFSYM,
+    A_DOLLAR,
+    A_DOLLSYM,
+    A_GIMME,
+    A_CANT
+}  t_atomtype;
+
+typedef struct _atom
+{
+    t_atomtype a_type;
+    ...;
+} t_atom;
 
 // init
 int libpd_init();
@@ -23,7 +93,7 @@ int libpd_process_raw_double(const double *inBuffer, double *outBuffer);
 // array access
 int libpd_arraysize(const char *name);
 int libpd_resize_array(const char *name, long size);
-int libpd_read_array(float *dest, const char *name, int offset, int n)
+int libpd_read_array(float *dest, const char *name, int offset, int n);
 int libpd_write_array(const char *name, int offset, const float *src, int n);
 int libpd_read_array_double(double *dest, const char *src, int offset, int n);
 int libpd_write_array_double(const char *dest, int offset, const double *src, int n);
@@ -49,6 +119,7 @@ void libpd_set_symbol(t_atom *a, const char *symbol);
 int libpd_list(const char *recv, int argc, t_atom *argv);
 int libpd_message(const char *recv, const char *msg, int argc, t_atom *argv);
 
+
 // receiving messages from pd
 void *libpd_bind(const char *recv);
 void libpd_unbind(void *p);
@@ -60,6 +131,7 @@ typedef void (*t_libpd_doublehook)(const char *recv, double x);
 typedef void (*t_libpd_symbolhook)(const char *recv, const char *symbol);
 typedef void (*t_libpd_listhook)(const char *recv, int argc, t_atom *argv);
 typedef void (*t_libpd_messagehook)(const char *recv, const char *msg, int argc, t_atom *argv);
+
 void libpd_set_printhook(const t_libpd_printhook hook);
 void libpd_set_banghook(const t_libpd_banghook hook);
 void libpd_set_floathook(const t_libpd_floathook hook);
@@ -73,6 +145,7 @@ float libpd_get_float(t_atom *a);
 double libpd_get_double(t_atom *a);
 const char *libpd_get_symbol(t_atom *a);
 t_atom *libpd_next_atom(t_atom *a);
+
 
 // sending MIDI messages to pd
 int libpd_noteon(int channel, int pitch, int velocity);
@@ -106,14 +179,28 @@ int libpd_start_gui(const char *path);
 void libpd_stop_gui();
 int libpd_poll_gui();
 
-// multiple instances
-t_pdinstance *libpd_new_instance();
-void libpd_set_instance(t_pdinstance *p);
-void libpd_free_instance(t_pdinstance *p);
-t_pdinstance *libpd_this_instance();
-t_pdinstance *libpd_get_instance(int index);
-int libpd_num_instances();
-
 // log level
 void libpd_set_verbose(int verbose);
 int libpd_get_verbose();
+
+
+""")
+
+# set_source() gives the name of the python extension module to
+# produce, and some C source code as a string.  This C code needs
+# to make the declarated functions, types and globals available,
+# so it is often just the "#include".
+ffibuilder.set_source("_libpd_cffi",
+"""
+     #include "../libpd_wrapper/z_libpd.h"   // the C header of the library
+     #include "../pure-data/src/m_pd.h"
+""",
+    define_macros = DEFINE_MACROS,
+    include_dirs = INCLUDE_DIRS,
+    libraries = LIBRARIES,
+    library_dirs = LIBRARY_DIRS,
+    extra_objects = EXTRA_OBJECTS,
+)
+
+if __name__ == "__main__":
+    ffibuilder.compile(verbose=True)
