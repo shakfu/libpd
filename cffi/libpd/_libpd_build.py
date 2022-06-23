@@ -43,6 +43,34 @@ EXTRA_OBJECTS = [
 
 
 
+# set_source() gives the name of the python extension module to
+# produce, and some C source code as a string.  This C code needs
+# to make the declarated functions, types and globals available,
+# so it is often just the "#include".
+ffibuilder.set_source("libpd._libpd",
+"""
+#include "../libpd_wrapper/z_libpd.h"   // the C header of the library
+#include "../pure-data/src/m_pd.h"
+
+// --------------------------------------------------------------------------
+// custom
+
+void compute_audio(int x)
+{
+    libpd_start_message(1);
+    libpd_add_float(x);
+    libpd_finish_message("pd", "dsp");
+}
+""",
+    define_macros = DEFINE_MACROS,
+    include_dirs = INCLUDE_DIRS,
+    libraries = LIBRARIES,
+    library_dirs = LIBRARY_DIRS,
+    extra_objects = EXTRA_OBJECTS,
+)
+
+
+
 # cdef() expects a single string declaring the C types, functions and
 # globals needed to use the shared object. It must be in valid C syntax.
 ffibuilder.cdef("""
@@ -183,24 +211,13 @@ int libpd_poll_gui();
 void libpd_set_verbose(int verbose);
 int libpd_get_verbose();
 
+// --------------------------------------------------------------------------
+// custom
+
+void compute_audio(int x);
 
 """)
 
-# set_source() gives the name of the python extension module to
-# produce, and some C source code as a string.  This C code needs
-# to make the declarated functions, types and globals available,
-# so it is often just the "#include".
-ffibuilder.set_source("_libpd_cffi",
-"""
-     #include "../libpd_wrapper/z_libpd.h"   // the C header of the library
-     #include "../pure-data/src/m_pd.h"
-""",
-    define_macros = DEFINE_MACROS,
-    include_dirs = INCLUDE_DIRS,
-    libraries = LIBRARIES,
-    library_dirs = LIBRARY_DIRS,
-    extra_objects = EXTRA_OBJECTS,
-)
-
-if __name__ == "__main__":
+if __name__ == "__main__":    # not when running with setuptools
     ffibuilder.compile(verbose=True)
+

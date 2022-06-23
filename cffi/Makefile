@@ -1,17 +1,17 @@
 
-# BREW_PORTAUDIO_STATIC="/usr/local/opt/portaudio/lib/libportaudio.a"
 
 all:
-	@python3 build.py
-	@rm -rf _libpd_cffi.c _libpd_cffi.o
+	@python3 libpd/_libpd_build.py
+	@rm -rf libpd/_libpd.c libpd/_libpd.o libpd/__pycache__
 
 
 
-.PHONY: test clean test_atom
+.PHONY: test clean
 
-test-cffi:
-	@python3 ./tests/test_libpd_audio.py
+test:
+	@python3 ./tests/test_audio.py
 
 
 clean:
 	@rm -f *.so
+	@rm -rf build
