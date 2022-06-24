@@ -76,6 +76,9 @@ void compute_audio(int x)
 ffibuilder.cdef("""
 // libpd api reference
 
+// --------------------------------------------------------------------------
+// m_pd.h
+
 typedef enum
 {
     A_NULL,
@@ -97,6 +100,11 @@ typedef struct _atom
     t_atomtype a_type;
     ...;
 } t_atom;
+
+void sys_getversion(int *major, int *minor, int *bugfix);
+
+// --------------------------------------------------------------------------
+// z_libpd.h
 
 // init
 int libpd_init();
@@ -210,6 +218,7 @@ int libpd_poll_gui();
 // log level
 void libpd_set_verbose(int verbose);
 int libpd_get_verbose();
+
 
 // --------------------------------------------------------------------------
 // custom
