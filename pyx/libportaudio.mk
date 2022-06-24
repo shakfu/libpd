@@ -4,7 +4,8 @@
 ##### Defaults & Paths #####
 UNAME_S := $(shell uname -s)
 
-PORTAUDIO := ../pure-data/portaudio/portaudio
+PUREDATA := ../pure-data
+PORTAUDIO := $(PUREDATA)/portaudio/portaudio
 
 PORTAUDIO_CFLAGS = -DNEWBUFFER \
 	-I$(PORTAUDIO)/include \
@@ -20,6 +21,10 @@ PORTAUDIO_LDFLAGS = -lportaudio \
 	-framework AudioUnit \
 	-framework CoreFoundation \
 	-framework CoreServices
+
+# windows options
+ASIO = 0
+MINGW = 0
 
 #########################################
 ##### Files, Binaries, & Libs #####
@@ -60,29 +65,31 @@ PORTAUDIO_SOURCES += \
 PORTAUDIO_CFLAGS += -Wno-error -Wno-deprecated
 endif
 
-# ifeq ($(OS),Windows_NT)
-# PORTAUDIO_CFLAGS += -DPA_USE_WMME
-# PORTAUDIO_CPPFLAGS += -I$(top_srcdir)/portaudio/portaudio/src/os/win
-# PORTAUDIO_SOURCES += \
-#     portaudio/src/os/win/pa_win_coinitialize.c \
-#     portaudio/src/os/win/pa_win_hostapis.c \
-#     portaudio/src/os/win/pa_win_util.c \
-#     portaudio/src/os/win/pa_win_waveformat.c \
-#     portaudio/src/hostapi/wmme/pa_win_wmme.c
-# if ASIO
-# PORTAUDIO_CFLAGS += -DPA_USE_ASIO
-# if MINGW
-# # hack for /asio/ASIOSDK/common/combase.h
-# PORTAUDIO_CPPFLAGS += -DWINVER=0x0502 -D_WIN32_WINNT=0x0502
-# endif
-# PORTAUDIO_CPPFLAGS += \
-#     -I$(top_srcdir)/asio/ASIOSDK/common -I$(top_srcdir)/asio/ASIOSDK/host \
-# 	-I$(top_srcdir)/asio/ASIOSDK/host/pc
-# PORTAUDIO_SOURCES += \
-#     portaudio/src/hostapi/asio/iasiothiscallresolver.cpp \
-#     portaudio/src/hostapi/asio/pa_asio.cpp
-# endif
-# endif
+
+ifeq ($(OS),Windows_NT)
+PORTAUDIO_CFLAGS += -DPA_USE_WMME
+PORTAUDIO_CPPFLAGS += -I$(PORTAUDIO)/src/os/win
+PORTAUDIO_SOURCES += \
+    $(PORTAUDIO)/src/os/win/pa_win_coinitialize.c \
+    $(PORTAUDIO)/src/os/win/pa_win_hostapis.c \
+    $(PORTAUDIO)/src/os/win/pa_win_util.c \
+    $(PORTAUDIO)/src/os/win/pa_win_waveformat.c \
+    $(PORTAUDIO)/src/hostapi/wmme/pa_win_wmme.c
+ifeq ($(ASIO),1)
+PORTAUDIO_CFLAGS += -DPA_USE_ASIO
+ifeq ($(MINGW),1)
+# hack for /asio/ASIOSDK/common/combase.h
+PORTAUDIO_CPPFLAGS += -DWINVER=0x0502 -D_WIN32_WINNT=0x0502
+endif
+PORTAUDIO_CPPFLAGS += \
+    -I$(PUREDATA)/asio/ASIOSDK/common -I$(PUREDATA)/asio/ASIOSDK/host \
+	-I$(PUREDATA)/asio/ASIOSDK/host/pc
+PORTAUDIO_SOURCES += \
+    $(PORTAUDIO)/src/hostapi/asio/iasiothiscallresolver.cpp \
+    $(PORTAUDIO)/src/hostapi/asio/pa_asio.cpp
+endif
+endif
+
 
 PORTAUDIO_HEADERS = \
 	$(PORTAUDIO)/include/pa_asio.h \
@@ -115,12 +122,17 @@ PORTAUDIO_HEADERS = \
 	$(PORTAUDIO)/src/os/win/pa_win_coinitialize.h
 
 
-PORTAUDIO_OBJS := $(PORTAUDIO_SOURCES:%.c=%.o)
+#PORTAUDIO_OBJS := $(PORTAUDIO_SOURCES:%.c=%.o)
+PORTAUDIO_OBJS := $(addsuffix .o,$(basename $(PORTAUDIO_SOURCES)))
 
 
 %.o : %.c
-	@echo "COMPILING SOURCE $< INTO OBJECT $@"
+	@echo "COMPILING C SOURCE $< INTO OBJECT $@"
 	@$(CC) -c $(PORTAUDIO_CFLAGS) $< -o $@
+
+%.o : %.cpp
+	@echo "COMPILING CPP SOURCE $< INTO OBJECT $@"
+	@$(CXX) -c $(PORTAUDIO_CPPFLAGS) $< -o $@
 
 $(PORTAUDIO_STATIC_LIB): $(PORTAUDIO_OBJS)
 	@ar rcs $(PORTAUDIO_STATIC_LIB) $(PORTAUDIO_OBJS)
