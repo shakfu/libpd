@@ -56,8 +56,8 @@ def close_patch(patch_id):
     ptr = __LIBPD_PATCHES[patch_id]
     lib.libpd_closefile(ptr)
 
-# #-------------------------------------------------------------------------
-# # Audio processing
+#-------------------------------------------------------------------------
+# Audio processing
 
 def get_blocksize() -> int:
     """return pd's fixed block size

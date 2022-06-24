@@ -1,9 +1,20 @@
 
 # BREW_PORTAUDIO_STATIC="/usr/local/opt/portaudio/lib/libportaudio.a"
 
+include libportaudio.mk
+
 all:
 	@python3 setup.py build_ext --inplace
 	@rm -rf ./build ./cypd.c ./libpd.c
+
+$(wildcard *.o):
+	$(CC) -c $(PORTAUDIO_CFLAGS) $(PORTAUDIO_SOURCES)
+
+$(PORTAUDIO_STATIC_LIB): 
+	@ar rcs $(PORTAUDIO_STATIC_LIB) $(wildcard *.o)
+
+portaudio: $(PORTAUDIO_STATIC_LIB)
+	@rm *.o
 
 cypd:
 	@CYPD=1 python3 setup.py build_ext --inplace	

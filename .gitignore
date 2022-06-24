@@ -4,6 +4,7 @@ libs/libpd.*
 libs/libpdcpp.*
 libs/libpdnative.*
 libs/pdnative.*
+libs/libportaudio.*
 
 # python
 python/pylibpd_wrap.c

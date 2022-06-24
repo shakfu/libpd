@@ -25,13 +25,15 @@ INCLUDE_DIRS = [
     "../libpd_wrapper",
     "../libpd_wrapper/util",
     "../pure-data/src",
+    "../pure-data/portaudio/portaudio/include",
+    "../pure-data/portaudio/portaudio/src/common",
 ]
 
 LIBRARIES = [
     'm',
     'dl',
     'pthread',
-    'portaudio', # requires portaudio to be installed system-wide
+    # 'portaudio', # requires portaudio to be installed system-wide
 ]
 
 LIBRARY_DIRS = [
@@ -41,6 +43,7 @@ LIBRARY_DIRS = [
 
 EXTRA_OBJECTS = [
     '../libs/libpd.a',
+    '../libs/libportaudio.a',
 ]
 
 
