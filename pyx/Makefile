@@ -1,34 +1,23 @@
 
-# BREW_PORTAUDIO_STATIC="/usr/local/opt/portaudio/lib/libportaudio.a"
-
 include libportaudio.mk
 
-all:
+all: portaudio
 	@python3 setup.py build_ext --inplace
 	@rm -rf ./build ./cypd.c ./libpd.c
 
-$(wildcard *.o):
-	$(CC) -c $(PORTAUDIO_CFLAGS) $(PORTAUDIO_SOURCES)
-
-$(PORTAUDIO_STATIC_LIB): 
-	@ar rcs $(PORTAUDIO_STATIC_LIB) $(wildcard *.o)
-
-portaudio: $(PORTAUDIO_STATIC_LIB)
-	@rm *.o
-
-cypd:
+cypd: portaudio
 	@CYPD=1 python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./cypd.c
 
-libpd:
+libpd: portaudio
 	@LIBPD=1 python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./libpd.c
 
-demo:
+demo: portaudio
 	@DEMO=1 python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./demo.c
 
-audio_test:
+audio_test: portaudio
 	@echo "generating portaudio c implementation test"
 	@gcc -o test_audio tests/test_audio.c ../libs/libpd.a \
 		-framework CoreServices -framework CoreFoundation \
@@ -37,7 +26,7 @@ audio_test:
 	@echo "now run ./test_audio "
 
 
-minim:
+minim: portaudio
 	@echo "generating minimal test"
 	@gcc -o minim tests/minimal.c ../libs/libpd.a \
 		-framework CoreServices -framework CoreFoundation \
@@ -56,7 +45,7 @@ test-cypd:
 test-atom:
 	@python3 ./tests/test_atom.py
 
-clean:
+clean: clean-portaudio
 	@rm -f *.so
 	@rm -f test_audio
 	@rm -f minim
