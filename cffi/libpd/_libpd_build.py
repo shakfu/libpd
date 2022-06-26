@@ -258,6 +258,25 @@ void libpd_print_concatenator(const char *s);
 
 void compute_audio(int x);
 
+// --------------------------------------------------------------------------
+// callbacks
+
+extern "Python" void print_callback(const char *s);
+extern "Python" void bang_callback(const char *recv);
+extern "Python" void float_callback(const char *recv, float x);
+extern "Python" void double_callback(const char *recv, double x);
+extern "Python" void symbol_callback(const char *recv, const char *symbol);
+extern "Python" void list_callback(const char *recv, int argc, t_atom *argv);
+extern "Python" void message_callback(const char *recv, const char *msg, int argc, t_atom *argv);
+
+extern "Python" void noteon_callback(int channel, int pitch, int velocity);
+extern "Python" void controlchange_callback(int channel, int controller, int value);
+extern "Python" void programchange_callback(int channel, int value);
+extern "Python" void pitchbend_callback(int channel, int value);
+extern "Python" void aftertouch_callback(int channel, int value);
+extern "Python" void polyaftertouch_callback(int channel, int pitch, int value);
+extern "Python" void midibyte_callback(int port, int byte);
+
 """)
 
 if __name__ == "__main__":    # not when running with setuptools
