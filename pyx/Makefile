@@ -5,6 +5,18 @@ all: portaudio
 	@python3 setup.py build_ext --inplace
 	@rm -rf ./build ./cypd.c ./libpd.c
 
+%.o : %.c
+	@$(CC) -c $(PORTAUDIO_CFLAGS) $< -o $@
+
+%.o : %.cpp
+	@$(CXX) -c $(PORTAUDIO_CPPFLAGS) $< -o $@
+
+$(PORTAUDIO_STATIC_LIB): $(PORTAUDIO_OBJS)
+	@ar rcs $(PORTAUDIO_STATIC_LIB) $(PORTAUDIO_OBJS)
+
+portaudio: $(PORTAUDIO_STATIC_LIB)
+	@echo "building portaudio as static lib..."
+
 cypd: portaudio
 	@CYPD=1 python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./cypd.c
@@ -44,6 +56,11 @@ test-cypd:
 
 test-atom:
 	@python3 ./tests/test_atom.py
+
+
+clean-portaudio:
+	@rm -f $(PORTAUDIO_OBJS)
+	@rm -f $(PORTAUDIO_STATIC_LIB)
 
 clean: clean-portaudio
 	@rm -f *.so

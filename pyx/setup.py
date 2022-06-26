@@ -18,6 +18,9 @@ DEFINE_MACROS = [
     ('HAVE_LIBDL', 1),
     ('USEAPI_DUMMY', 1),
     ('LIBPD_EXTRA', 1),
+    # ('PDINSTANCE', 1),   # compile with multi-instance support
+    # ('PDTHREADS', 1),    # compile with per-thread storage for global variables, required for multi-instance support
+    # ('PD_FLOATSIZE', 1), # set the float precision, 32 (default) or 64, ex. `PD_FLOATSIZE=64`
 ]
 
 INCLUDE_DIRS = [
