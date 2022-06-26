@@ -15,7 +15,6 @@ from posix.unistd cimport sleep
 from libc.stdlib cimport malloc, free
 from libc.string cimport strcpy, strlen
 
-
 # ----------------------------------------------------------------------------
 # constants
 
@@ -261,7 +260,8 @@ cdef class Patch:
     # cdef readonly str path
     cdef readonly str name
     cdef readonly str dir
-    
+    cdef readonly bint queued
+
     # audio
     cdef readonly int sample_rate
     cdef readonly int blocksize
@@ -708,75 +708,6 @@ cdef class Patch:
     cdef void set_symbol(self, pd.t_atom *a, const char *symbol):
         """write a symbol value to the given atom"""
         libpd.libpd_set_symbol(a, symbol)
-
-    # def send_list(self, recv, *args):
-    #     return process_args(args) or libpd.libpd_finish_list(recv.encode('utf-8'))
-
-    # def send_message(self, recv, symbol, *args):
-    #     return process_args(args) or (
-    #         libpd.libpd_finish_message(recv.encode('utf-8'), symbol.encode('utf-8')))
-
-
-    # cdef int send_list(self, const char *recv, int argc, pd.t_atom *argv):
-    #     """send an atom array of a given length as a list to a destination receiver
-
-    #     returns 0 on success or -1 if receiver name is non-existent
-    #     ex: send [list 1 2 bar( to [r foo] on the next tick with:
-    #         t_atom v[3]
-    #         libpd_set_float(v, 1)
-    #         libpd_set_float(v + 1, 2)
-    #         libpd_set_symbol(v + 2, "bar")
-    #         libpd_list("foo", 3, v)
-    #     """
-    #     return libpd.libpd_list(recv, argc, argv)
-
-    def send_list(self, reciever: str, *args) -> int:
-        """send an atom array of a given length as a list to a destination receiver
-
-        returns 0 on success or -1 if receiver name is non-existent
-        ex: send [list 1 2 bar( to [r foo] on the next tick with:
-            t_atom v[3]
-            libpd_set_float(v, 1)
-            libpd_set_float(v + 1, 2)
-            libpd_set_symbol(v + 2, "bar")
-            libpd_list("foo", 3, v)
-        """
-        cdef int argc = len(args)
-        cdef pd.t_atom argv[MAX_ATOMS]
-        if argc > 0:
-            for i, arg in enumerate(args):
-                if isinstance(arg, float) or isinstance(arg, int):
-                    self.set_float(argv + <int>i, <float>arg)
-                elif isinstance(arg, str):
-                    sym = arg.encode('utf-8')
-                    self.set_symbol(argv + <int>i, sym)
-            recv = reciever.encode('utf-8')
-            return libpd.libpd_list(recv, argc, argv)
-        raise ValueError(f'Invalid input values for {reciever} {args}')
-
-
-    # # # FIXME: expected bytes string found
-    def send_message(self, reciever: str, msg: str, *args) -> int:
-        """send an atom array of a given length as a typed message to a destination receiver
-
-        returns 0 on success or -1 if receiver name is non-existent
-        ex: send [ pd dsp 1( on the next tick with:
-            t_atom v[1]
-            libpd_set_float(v, 1)
-            libpd_message("pd", "dsp", 1, v)
-        """
-        cdef int argc = len(args)
-        cdef pd.t_atom argv[MAX_ATOMS]
-        if argc > 0:
-            for i, arg in enumerate(args):
-                if isinstance(arg, float) or isinstance(arg, int):
-                    self.set_float(argv + <int>i, arg)
-                elif isinstance(arg, str):
-                    sym = arg.encode('utf-8')
-                    self.set_symbol(argv + <int>i, sym)
-            recv = reciever.encode('utf-8')
-            return libpd.libpd_message(recv, msg, argc, argv)
-        raise ValueError(f'Invalid input values for {reciever} {msg} {args} msg')
 
     def process_args(self, args):
         if libpd.libpd_start_message(len(args)):

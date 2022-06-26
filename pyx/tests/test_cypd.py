@@ -8,3 +8,7 @@ import cypd
 
 
 p = cypd.Patch(name='test.pd', dir='tests/pd')
+
+p.init_hooks()
+p.init()
+p.play()
