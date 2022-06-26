@@ -18,6 +18,16 @@ Steps to writing a PortAudio application using the callback technique:
 6. Close the stream and terminate the library.
 
 
+## Cython exceptoins
+
+This is correct way to raise for cdefs
+
+```python
+cdef public int baz() except -1:
+    raise ValueError
+```
+
+
 ## Links
 
 

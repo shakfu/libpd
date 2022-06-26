@@ -336,7 +336,7 @@ cdef void terminate(libportaudio.PaError err, void *handle) nogil:
 # Initialization
 
 
-def init() -> int:
+def init() -> bool:
     """initialize libpd
 
     It is safe to call this more than once
@@ -344,7 +344,7 @@ def init() -> int:
     note: sets SIGFPE handler to keep bad pd patches from crashing due to divide
     by 0, set any custom handling after calling this function
     """
-    return libpd.libpd_init()
+    return libpd.libpd_init() == 0
 
 def clear_search_path():
     """clear the libpd search path for abstractions and externals
@@ -385,14 +385,14 @@ def close_patch(patch_id):
 #-------------------------------------------------------------------------
 # Audio processing
 
-def get_blocksize():
+def get_blocksize() -> int:
     """return pd's fixed block size
 
     the number of sample frames per 1 pd tick
     """
     return libpd.libpd_blocksize()
 
-def init_audio(int in_channels, int out_channels, int sample_rate):
+def init_audio(int in_channels, int out_channels, int sample_rate) -> bool:
     """initialize audio rendering
 
     returns 0 on success
@@ -400,7 +400,7 @@ def init_audio(int in_channels, int out_channels, int sample_rate):
     return libpd.libpd_init_audio(
         in_channels,
         out_channels,
-        sample_rate)
+        sample_rate) == 0
 
 cdef int process_float(const int ticks, const float *in_buffer, float *out_buffer) nogil:
     """process interleaved float samples from in_buffer -> libpd -> out_buffer
@@ -558,25 +558,25 @@ cdef int write_array(const char *name, int offset, const float *src, int n):
 #-------------------------------------------------------------------------
 # Sending messages to pd
 
-def send_bang(recv):
+def send_bang(recv) -> bool:
     """send a bang to a destination receiver
 
     ex: send_bang("foo") will send a bang to [s foo] on the next tick
     returns 0 on success or -1 if receiver name is non-existent
     """
     cdef bytes _recv = recv.encode()
-    return libpd.libpd_bang(_recv)
+    return libpd.libpd_bang(_recv) == 0
 
-def send_float(recv, float x):
+def send_float(recv, float x) -> bool:
     """send a float to a destination receiver
 
     ex: send_float("foo", 1) will send a 1.0 to [s foo] on the next tick
     returns 0 on success or -1 if receiver name is non-existent
     """
     cdef bytes _recv = recv.encode()
-    return libpd.libpd_float(_recv, x)
+    return libpd.libpd_float(_recv, x) == 0
 
-def send_symbol(recv, symbol):
+def send_symbol(recv, symbol) -> bool:
     """send a symbol to a destination receiver
 
     ex: send_symbol("foo", "bar") will send "bar" to [s foo] on the next tick
@@ -584,19 +584,19 @@ def send_symbol(recv, symbol):
     """
     cdef bytes _recv = recv.encode()
     cdef bytes _symbol = symbol.encode()
-    return libpd.libpd_symbol(_recv, _symbol)
+    return libpd.libpd_symbol(_recv, _symbol) == 0
 
 #-------------------------------------------------------------------------
 # Sending compound messages: sequenced function calls
 
-def start_message(int maxlen):
+def start_message(int maxlen) -> bool:
     """start composition of a new list or typed message of up to max element length
 
     messages can be of a smaller length as max length is only an upper bound
     note: no cleanup is required for unfinished messages
     returns 0 on success or nonzero if the length is too large
     """
-    return libpd.libpd_start_message(maxlen)
+    return libpd.libpd_start_message(maxlen) == 0
 
 def add_float(float x):
     """add a float to the current message in progress"""
@@ -623,7 +623,7 @@ def send_message(recv, symbol, *args):
     return process_args(args) or finish_message(recv, symbol)
 
 
-def finish_list(recv: str) -> int:
+def finish_list(recv: str) -> bool:
     """finish current message and send as a list to a destination receiver
 
     returns 0 on success or -1 if receiver name is non-existent
@@ -634,9 +634,9 @@ def finish_list(recv: str) -> int:
         libpd_add_symbol("bar")
         libpd_finish_list("foo")
     """
-    return libpd.libpd_finish_list(recv.encode('utf-8'))
+    return libpd.libpd_finish_list(recv.encode('utf-8')) == 0
 
-def finish_message(recv: str, msg: str) -> int:
+def finish_message(recv: str, msg: str) -> bool:
     """finish current message and send as a typed message to a destination receiver
 
     note: typed message handling currently only supports up to 4 elements
@@ -647,7 +647,8 @@ def finish_message(recv: str, msg: str) -> int:
         libpd_add_float(1)
         libpd_finish_message("pd", "dsp")
     """
-    return libpd.libpd_finish_message(recv.encode('utf-8'), msg.encode('utf-8'))
+    return libpd.libpd_finish_message(
+        recv.encode('utf-8'), msg.encode('utf-8')) == 0
 
 #-------------------------------------------------------------------------
 # Convenience messages methods
@@ -678,7 +679,7 @@ def exists(recv: str) -> bool:
 
     returns 1 if the receiver exists, otherwise 0
     """
-    return libpd.libpd_exists(recv.encode('utf-8'))
+    return bool(libpd.libpd_exists(recv.encode('utf-8')))
 
 def release():
     """shutdown libpd and releases all resources
@@ -778,7 +779,7 @@ def set_message_callback(callback):
 #-------------------------------------------------------------------------
 # Sending MIDI messages to pd
 
-def noteon(channel: int , pitch: int, velocity: int) -> int:
+def noteon(channel: int , pitch: int, velocity: int) -> bool:
     """send a MIDI note on message to [notein] objects
 
     channel is 0-indexed, pitch is 0-127, and velocity is 0-127
@@ -786,27 +787,27 @@ def noteon(channel: int , pitch: int, velocity: int) -> int:
     note: there is no note off message, send a note on with velocity = 0 instead
     returns 0 on success or -1 if an argument is out of range
     """
-    return libpd.libpd_noteon(channel, pitch, velocity)
+    return libpd.libpd_noteon(channel, pitch, velocity) == 0
 
-def controlchange(channel: int, controller: int, value: int) -> int:
+def controlchange(channel: int, controller: int, value: int) -> bool:
     """send a MIDI control change message to [ctlin] objects
 
     channel is 0-indexed, controller is 0-127, and value is 0-127
     channels encode MIDI ports via: libpd_channel = pd_channel + 16 * pd_port
     returns 0 on success or -1 if an argument is out of range
     """
-    return libpd.libpd_controlchange(channel, controller, value)
+    return libpd.libpd_controlchange(channel, controller, value) == 0
 
-def programchange(channel: int, value: int) -> int:
+def programchange(channel: int, value: int) -> bool:
     """send a MIDI program change message to [pgmin] objects
 
     channel is 0-indexed and value is 0-127
     channels encode MIDI ports via: libpd_channel = pd_channel + 16 * pd_port
     returns 0 on success or -1 if an argument is out of range
     """
-    return libpd.libpd_programchange(channel, value)
+    return libpd.libpd_programchange(channel, value) == 0
 
-def pitchbend(channel: int, value: int) -> int:
+def pitchbend(channel: int, value: int) -> bool:
     """send a MIDI pitch bend message to [bendin] objects
 
     channel is 0-indexed and value is -8192-8192
@@ -814,18 +815,18 @@ def pitchbend(channel: int, value: int) -> int:
     note: [bendin] outputs 0-16383 while [bendout] accepts -8192-8192
     returns 0 on success or -1 if an argument is out of range
     """
-    return libpd.libpd_pitchbend(channel, value)
+    return libpd.libpd_pitchbend(channel, value) == 0
 
-def aftertouch(channel: int, value: int) -> int:
+def aftertouch(channel: int, value: int) -> bool:
     """send a MIDI after touch message to [touchin] objects
 
     channel is 0-indexed and value is 0-127
     channels encode MIDI ports via: libpd_channel = pd_channel + 16 * pd_port
     returns 0 on success or -1 if an argument is out of range
     """
-    return libpd.libpd_aftertouch(channel, value)
+    return libpd.libpd_aftertouch(channel, value) == 0
 
-def polyaftertouch(channel: int, pitch: int, value: int) -> int:
+def polyaftertouch(channel: int, pitch: int, value: int) -> bool:
     """send a MIDI poly after touch message to [polytouchin] objects
 
     channel is 0-indexed, pitch is 0-127, and value is 0-127
@@ -834,29 +835,29 @@ def polyaftertouch(channel: int, pitch: int, value: int) -> int:
     """
     return libpd.libpd_polyaftertouch(channel, pitch, value)
 
-def midibyte(port: int, byte: int) -> int:
+def midibyte(port: int, byte: int) -> bool:
     """send a raw MIDI byte to [midiin] objects
 
     port is 0-indexed and byte is 0-256
     returns 0 on success or -1 if an argument is out of range
     """
-    return libpd.libpd_midibyte(port, byte)
+    return libpd.libpd_midibyte(port, byte) == 0
 
-def sysex(port: int, byte: int) -> int:
+def sysex(port: int, byte: int) -> bool:
     """send a raw MIDI byte to [sysexin] objects
 
     port is 0-indexed and byte is 0-256
     returns 0 on success or -1 if an argument is out of range
     """
-    return libpd.libpd_sysex(port, byte)
+    return libpd.libpd_sysex(port, byte) == 0
 
-def sysrealtime(port: int, byte: int) -> int:
+def sysrealtime(port: int, byte: int) -> bool:
     """send a raw MIDI byte to [realtimein] objects
 
     port is 0-indexed and byte is 0-256
     returns 0 on success or -1 if an argument is out of range
     """
-    return libpd.libpd_sysrealtime(port, byte)
+    return libpd.libpd_sysrealtime(port, byte) == 0
 
 
 #-------------------------------------------------------------------------
@@ -1203,14 +1204,14 @@ def set_queued_midibyte_callback(callback):
     else:
         __CALLBACKS['midibyte_callback'] = None
 
-def queued_init() -> int:
+def queued_init() -> bool:
     """initialize libpd and the queued ringbuffers, use in place of libpd_init()
     
     this is safe to call more than once
     returns 0 on success, -1 if libpd was already initialized, or -2 if ring
     buffer allocation failed
     """
-    return libpd.libpd_queued_init()
+    return libpd.libpd_queued_init() == 0
 
 def queued_release():
     """free the queued ringbuffers"""
