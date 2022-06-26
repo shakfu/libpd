@@ -5,7 +5,7 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
 
 ## initialization
 
-    # initialize libpd; it is safe to call this more than once
+    # initialize libpd it is safe to call this more than once
     # returns 0 on success or -1 if libpd was already initialized
     # note: sets SIGFPE handler to keep bad pd patches from crashing due to divide
     #       by 0, set any custom handling after calling this function
@@ -530,3 +530,109 @@ cdef extern from "../libpd_wrapper/z_libpd.h":
 
     # get the verbose print state: 0 or 1
     int libpd_get_verbose()
+
+
+cdef extern from "../libpd_wrapper/util/z_queued.h":
+
+    # set the queued print receiver hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_printhook(const t_libpd_printhook hook)
+
+    # set the queued bang receiver hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_banghook(const t_libpd_banghook hook)
+
+    # set the queued float receiver hook, NULL by default
+    # note: avoid calling this while DSP is running
+    # note: you can either have a queued float receiver hook, or a queued
+    #       double receiver hook (see below), but not both.
+    #       calling this, will automatically unset the queued double receiver
+    #       hook
+    cdef void libpd_set_queued_floathook(const t_libpd_floathook hook)
+
+    # set the queued double receiver hook, NULL by default
+    # note: avoid calling this while DSP is running
+    # note: you can either have a queued double receiver hook, or a queued
+    #       float receiver hook (see above), but not both.
+    #       calling this, will automatically unset the queued float receiver
+    #       hook
+    cdef void libpd_set_queued_doublehook(const t_libpd_doublehook hook)
+
+    # set the queued symbol receiver hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_symbolhook(const t_libpd_symbolhook hook)
+
+    # set the queued list receiver hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_listhook(const t_libpd_listhook hook)
+
+    # set the queued typed message receiver hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_messagehook(const t_libpd_messagehook hook)
+
+    # set the queued MIDI note on hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_noteonhook(const t_libpd_noteonhook hook)
+
+    # set the queued MIDI control change hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_controlchangehook(const t_libpd_controlchangehook hook)
+
+    # set the queued MIDI program change hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_programchangehook(const t_libpd_programchangehook hook)
+
+    # set the queued MIDI pitch bend hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_pitchbendhook(const t_libpd_pitchbendhook hook)
+
+    # set the queued MIDI after touch hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_aftertouchhook(const t_libpd_aftertouchhook hook)
+
+    # set the queued MIDI poly after touch hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_polyaftertouchhook(const t_libpd_polyaftertouchhook hook)
+
+    # set the queued raw MIDI byte hook, NULL by default
+    # note: do not call this while DSP is running
+    cdef void libpd_set_queued_midibytehook(const t_libpd_midibytehook hook)
+
+    # initialize libpd and the queued ringbuffers, use in place of libpd_init()
+    # this is safe to call more than once
+    # returns 0 on success, -1 if libpd was already initialized, or -2 if ring
+    # buffer allocation failed
+    cdef int libpd_queued_init()
+
+    # free the queued ringbuffers
+    cdef void libpd_queued_release()
+
+    # process and dispatch received messages in message ringbuffer
+    cdef void libpd_queued_receive_pd_messages()
+
+    # process and dispatch receive midi messages in MIDI message ringbuffer
+    cdef void libpd_queued_receive_midi_messages()
+
+
+cdef extern from "../libpd_wrapper/util/z_print_util.h":
+
+    # concatenate print messages into single lines before returning them to the
+    # print hook:
+    #    ie. line "hello 123\n" is received in 1 part -> "hello 123"
+    # for comparison, the default behavior receives individual words and spaces:
+    #
+    # ie. line "hello 123" is sent in 3 parts -> "hello", " ", "123\n"
+
+    # assign the pointer to your print handler
+    cdef void libpd_set_concatenated_printhook(const t_libpd_printhook hook)
+
+    # assign this function pointer to libpd_printhook or libpd_queued_printhook,
+    # depending on whether you're using queued messages, to intercept and
+    # concatenate print messages:
+    #     libpd_set_printhook(libpd_print_concatenator);
+    #     or
+    #     libpd_set_concatenated_printhook(your_print_handler);
+    # note: the char pointer argument is only good for the duration of the print
+    #       callback; if you intend to use the argument after the callback has
+    #       returned, you need to make a defensive copy
+    cdef void libpd_print_concatenator(const char *s)

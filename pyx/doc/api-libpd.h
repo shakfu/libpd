@@ -117,3 +117,30 @@ int libpd_num_instances();
 // log level
 void libpd_set_verbose(int verbose);
 int libpd_get_verbose();
+
+// ---------------------------------------------------------------------------
+// extended api
+
+// extendeded queued api
+void libpd_set_queued_printhook(const t_libpd_printhook hook);
+void libpd_set_queued_banghook(const t_libpd_banghook hook);
+void libpd_set_queued_floathook(const t_libpd_floathook hook);
+void libpd_set_queued_doublehook(const t_libpd_doublehook hook);
+void libpd_set_queued_symbolhook(const t_libpd_symbolhook hook);
+void libpd_set_queued_listhook(const t_libpd_listhook hook);
+void libpd_set_queued_messagehook(const t_libpd_messagehook hook);
+void libpd_set_queued_noteonhook(const t_libpd_noteonhook hook);
+void libpd_set_queued_controlchangehook(const t_libpd_controlchangehook hook);
+void libpd_set_queued_programchangehook(const t_libpd_programchangehook hook);
+void libpd_set_queued_pitchbendhook(const t_libpd_pitchbendhook hook);
+void libpd_set_queued_aftertouchhook(const t_libpd_aftertouchhook hook);
+void libpd_set_queued_polyaftertouchhook(const t_libpd_polyaftertouchhook hook);
+void libpd_set_queued_midibytehook(const t_libpd_midibytehook hook);
+int libpd_queued_init();
+void libpd_queued_release();
+void libpd_queued_receive_pd_messages();
+void libpd_queued_receive_midi_messages();
+
+// extended print_util api
+void libpd_set_concatenated_printhook(const t_libpd_printhook hook);
+void libpd_print_concatenator(const char *s);

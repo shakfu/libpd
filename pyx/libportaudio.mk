@@ -127,17 +127,17 @@ PORTAUDIO_OBJS := $(addsuffix .o,$(basename $(PORTAUDIO_SOURCES)))
 
 
 %.o : %.c
-	@echo "COMPILING C SOURCE $< INTO OBJECT $@"
 	@$(CC) -c $(PORTAUDIO_CFLAGS) $< -o $@
 
 %.o : %.cpp
-	@echo "COMPILING CPP SOURCE $< INTO OBJECT $@"
 	@$(CXX) -c $(PORTAUDIO_CPPFLAGS) $< -o $@
 
 $(PORTAUDIO_STATIC_LIB): $(PORTAUDIO_OBJS)
 	@ar rcs $(PORTAUDIO_STATIC_LIB) $(PORTAUDIO_OBJS)
 
 portaudio: $(PORTAUDIO_STATIC_LIB)
+	@echo "building portaudio as static lib..."
+
 
 clean-portaudio:
 	@rm -f $(PORTAUDIO_OBJS)

@@ -76,89 +76,93 @@ def process_args(args):
 # ----------------------------------------------------------------------------
 # callback slots
 
-# callbacks
-cdef object print_callback = None
-cdef object bang_callback = None
-cdef object float_callback = None
-cdef object double_callback = None
-cdef object symbol_callback = None
-cdef object list_callback = None
-cdef object message_callback = None
+# # callbacks
 
-# midi callbacks
-cdef object noteon_callback = None
-cdef object controlchange_callback = None
-cdef object programchange_callback = None
-cdef object pitchbend_callback = None
-cdef object aftertouch_callback = None
-cdef object polyaftertouch_callback = None
-cdef object midibyte_callback = None
+__CALLBACKS = dict(
+    # callbacks
+    print_callback = None,
+    bang_callback = None,
+    float_callback = None,
+    double_callback = None,
+    symbol_callback = None,
+    list_callback = None,
+    message_callback = None,
 
+    # midi callbacks
+    noteon_callback = None,
+    controlchange_callback = None,
+    programchange_callback = None,
+    pitchbend_callback = None,
+    aftertouch_callback = None,
+    polyaftertouch_callback = None,
+    midibyte_callback = None,
+)
 
 # ----------------------------------------------------------------------------
 # callback hooks
 
 # messaging
 cdef void print_callback_hook(const char *s):
-    if print_callback:
-        print_callback(s.decode())
+    if __CALLBACKS['print_callback']:
+        __CALLBACKS['print_callback'](s.decode())
 
 cdef void bang_callback_hook(const char *recv):
-    if bang_callback:
-        bang_callback(recv.decode())
+    if __CALLBACKS['bang_callback']:
+        __CALLBACKS['bang_callback'](recv.decode())
 
 cdef void float_callback_hook(const char *recv, float f):
-    if float_callback:
-        float_callback(recv.decode(), f)
+    if __CALLBACKS['float_callback']:
+        __CALLBACKS['float_callback'](recv.decode(), f)
 
 cdef void double_callback_hook(const char *recv, double d):
-    if double_callback:
-        double_callback(recv.decode(), d)
+    if __CALLBACKS['double_callback']:
+        __CALLBACKS['double_callback'](recv.decode(), d)
 
 cdef void symbol_callback_hook(const char *recv, const char *symbol):
-    if symbol_callback:
-        symbol_callback(recv.decode(), symbol.decode())
+    if __CALLBACKS['symbol_callback']:
+        __CALLBACKS['symbol_callback'](recv.decode(), symbol.decode())
 
 cdef void list_callback_hook(const char *recv, int argc, pd.t_atom *argv):
     cdef object args = None
-    if list_callback:
+    if __CALLBACKS['list_callback']:
         args = convert_args(recv, NULL, argc, argv)
-        list_callback(*args)
+        __CALLBACKS['list_callback'](*args)
 
 cdef void message_callback_hook(const char *recv, const char *symbol, int argc, pd.t_atom *argv):
     cdef object args = None
-    if message_callback:
+    if __CALLBACKS['message_callback']:
         args = convert_args(recv, symbol, argc, argv)
-        message_callback(*args)
+        __CALLBACKS['message_callback'](*args)
+
 
 # midi
 cdef void noteon_callback_hook(int channel, int pitch, int velocity):
-    if noteon_callback:
-        noteon_callback(channel, pitch, velocity)
+    if __CALLBACKS['noteon_callback']:
+        __CALLBACKS['noteon_callback'](channel, pitch, velocity)
 
 cdef void controlchange_callback_hook(int channel, int controller, int value):
-    if controlchange_callback:
-        controlchange_callback(channel, controller, value)
+    if __CALLBACKS['controlchange_callback']:
+        __CALLBACKS['controlchange_callback'](channel, controller, value)
 
 cdef void programchange_callback_hook(int channel, int value):
-    if programchange_callback:
-        programchange_callback(channel, value)
+    if __CALLBACKS['programchange_callback']:
+        __CALLBACKS['programchange_callback'](channel, value)
 
 cdef void pitchbend_callback_hook(int channel, int value):
-    if pitchbend_callback:
-        pitchbend_callback(channel, value)
+    if __CALLBACKS['pitchbend_callback']:
+        __CALLBACKS['pitchbend_callback'](channel, value)
 
 cdef void aftertouch_callback_hook(int channel, int value):
-    if aftertouch_callback:
-        aftertouch_callback(channel, value)
+    if __CALLBACKS['aftertouch_callback']:
+        __CALLBACKS['aftertouch_callback'](channel, value)
 
 cdef void polyaftertouch_callback_hook(int channel, int pitch, int value):
-    if polyaftertouch_callback:
-        polyaftertouch_callback(channel, pitch, value)
+    if __CALLBACKS['polyaftertouch_callback']:
+        __CALLBACKS['polyaftertouch_callback'](channel, pitch, value)
 
 cdef void midibyte_callback_hook(int port, int byte):
-    if midibyte_callback:
-        midibyte_callback(port, byte)
+    if __CALLBACKS['midibyte_callback']:
+        __CALLBACKS['midibyte_callback'](port, byte)
 
 # ----------------------------------------------------------------------------
 # pure python callbacks
@@ -275,7 +279,7 @@ cdef class Patch:
 
     def __cinit__(self, str name, str dir='.', 
             int sample_rate=SAMPLE_RATE, int ticks=N_TICKS, int blocksize=BLOCKSIZE,
-            int in_channels=CHANNELS_IN, int out_channels=CHANNELS_OUT):
+            int in_channels=CHANNELS_IN, int out_channels=CHANNELS_OUT, queued=False):
         # self.name = name.encode('UTF-8')
         # self.dir = dir.encode('UTF-8')
         self.name = name
@@ -285,10 +289,15 @@ cdef class Patch:
         self.ticks = ticks
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.queued = queued
         self.handle = NULL
         self.is_open = False
         self.patch_dict = {}
         self.source_dict = {}
+
+    def __dealloc__(self):
+        if self.queued:
+            libpd.libpd_queued_release() # free the queued ringbuffers
 
     def play(self):
 
@@ -385,31 +394,40 @@ cdef class Patch:
 
 
     def init(self) -> int:
-        """initialize libpd
+        """initialize libpd with default configuration
+
+        if self.queued == True then it will initialize the queued ringbuffers
 
         It is safe to call this more than once
-        returns 0 on success or -1 if libpd was already initialized
+        returns 0 on success or -1 if libpd was already initialized or -2 if ring
+        buffer allocation failed.
+
         note: sets SIGFPE handler to keep bad pd patches from crashing due to divide
         by 0, set any custom handling after calling this function
         """
-        return libpd.libpd_init()
+        if self.queued:
+            return libpd.libpd_queued_init()
+        else:
+            return libpd.libpd_init()
 
-    def init_hooks(self):
+    def init_hooks(self, python=True):
         """initialize all hooks"""
-        self.set_print_callback(pd_print)
-        self.set_bang_callback(pd_bang)
-        self.set_float_callback(pd_float)
-        self.set_symbol_callback(pd_symbol)
-        self.set_message_callback(pd_message)
-        self.set_list_callback(pd_list)
-        # self.set_noteon_callback(pd_noteon)
-        # libpd.libpd_set_printhook(pd_cprint)
-        # libpd.libpd_set_banghook(pd_cbang)
-        # libpd.libpd_set_floathook(pd_cfloat)
-        # libpd.libpd_set_symbolhook(pd_csymbol)
-        # libpd.libpd_set_listhook(pd_clist)
-        # libpd.libpd_set_messagehook(pd_cmessage)
-        # libpd.libpd_set_noteonhook(pd_cnoteon)
+        if python:
+            self.set_print_callback(pd_print)
+            self.set_bang_callback(pd_bang)
+            self.set_float_callback(pd_float)
+            self.set_symbol_callback(pd_symbol)
+            self.set_message_callback(pd_message)
+            self.set_list_callback(pd_list)
+            self.set_noteon_callback(pd_noteon)
+        else:
+            libpd.libpd_set_printhook(pd_cprint)
+            libpd.libpd_set_banghook(pd_cbang)
+            libpd.libpd_set_floathook(pd_cfloat)
+            libpd.libpd_set_symbolhook(pd_csymbol)
+            libpd.libpd_set_listhook(pd_clist)
+            libpd.libpd_set_messagehook(pd_cmessage)
+            libpd.libpd_set_noteonhook(pd_cnoteon)
 
     def clear_search_path(self):
         """clear the libpd search path for abstractions and externals
@@ -850,41 +868,47 @@ cdef class Patch:
         """
         return libpd.libpd_exists(recv.encode('utf-8'))
 
-    def set_print_callback(self, callback):
+    def set_print_callback(self, callback, queued=False):
         """set the print receiver callback, prints to stdout by default
 
         note: do not call this while DSP is running
         """
-        global print_callback
         if callable(callback):
-            print_callback = callback
-            libpd.libpd_set_printhook(print_callback_hook)
+            __CALLBACKS['print_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_printhook(print_callback_hook)
+            else:
+                libpd.libpd_set_printhook(print_callback_hook)
         else:
-            print_callback = None
+            __CALLBACKS['print_callback'] = None
 
     def set_bang_callback(self, callback):
         """set the bang receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
-        global bang_callback
         if callable(callback):
-            bang_callback = callback
-            libpd.libpd_set_banghook(bang_callback_hook)
+            __CALLBACKS['bang_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_banghook(bang_callback_hook)
+            else:
+                libpd.libpd_set_banghook(bang_callback_hook)
         else:
-            bang_callback = None
+            __CALLBACKS['bang_callback'] = None
 
     def set_float_callback(self, callback):
         """set the float receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
-        global float_callback
         if callable(callback):
-            float_callback = callback
-            libpd.libpd_set_floathook(float_callback_hook)
+            __CALLBACKS['float_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_floathook(float_callback_hook)
+            else:
+                libpd.libpd_set_floathook(float_callback_hook)
         else:
-            float_callback = None
+            __CALLBACKS['float_callback'] = None
 
     def set_double_callback(self, callback):
         """set the double receiver callback, NULL by default
@@ -895,36 +919,42 @@ cdef class Patch:
               calling this, will automatically unset the float receiver hook
         note: only full-precision when compiled with PD_FLOATSIZE=64
         """
-        global double_callback
         if callable(callback):
-            double_callback = callback
-            libpd.libpd_set_doublehook(double_callback_hook)
+            __CALLBACKS['double_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_doublehook(double_callback_hook)
+            else:
+                libpd.libpd_set_doublehook(double_callback_hook)
         else:
-            double_callback = None
+            __CALLBACKS['double_callback'] = None
 
     def set_symbol_callback(self, callback):
         """set the symbol receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
-        global symbol_callback
         if callable(callback):
-            symbol_callback = callback
-            libpd.libpd_set_symbolhook(symbol_callback_hook)
+            __CALLBACKS['symbol_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_symbolhook(symbol_callback_hook)
+            else:
+                libpd.libpd_set_symbolhook(symbol_callback_hook)
         else:
-            symbol_callback = None
+            __CALLBACKS['symbol_callback'] = None
 
     def set_list_callback(self, callback):
         """set the list receiver callback, NULL by default
 
         note: do not call this while DSP is running
         """
-        global list_callback
         if callable(callback):
-            list_callback = callback
-            libpd.libpd_set_listhook(list_callback_hook)
+            __CALLBACKS['list_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_listhook(list_callback_hook)
+            else:
+                libpd.libpd_set_listhook(list_callback_hook)
         else:
-            list_callback = None
+            __CALLBACKS['list_callback'] = None
 
 
     def set_message_callback(self, callback):
@@ -932,12 +962,14 @@ cdef class Patch:
 
         note: do not call this while DSP is running
         """
-        global message_callback
         if callable(callback):
-            message_callback = callback
-            libpd.libpd_set_messagehook(message_callback_hook)
+            __CALLBACKS['message_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_messagehook(message_callback_hook)
+            else:
+                libpd.libpd_set_messagehook(message_callback_hook)
         else:
-            message_callback = None
+            __CALLBACKS['message_callback'] = None
 
     cdef int is_float(self, pd.t_atom *a):
         """check if an atom is a float type: 0 or 1
@@ -1076,12 +1108,14 @@ cdef class Patch:
 
         note: do not call this while DSP is running
         """
-        global noteon_callback
         if callable(callback):
-            noteon_callback = callback
-            libpd.libpd_set_noteonhook(noteon_callback_hook)
+            __CALLBACKS['noteon_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_noteonhook(noteon_callback_hook)
+            else:
+                libpd.libpd_set_noteonhook(noteon_callback_hook)
         else:
-            noteon_callback = None
+            __CALLBACKS['noteon_callback'] = None
 
     def set_controlchange_callback(self, callback):
         """set the MIDI control change callback to receive from [ctlout] objects,
@@ -1089,12 +1123,14 @@ cdef class Patch:
 
         note: do not call this while DSP is running
         """
-        global controlchange_callback
         if callable(callback):
-            controlchange_callback = callback
-            libpd.libpd_set_controlchangehook(controlchange_callback_hook)
+            __CALLBACKS['controlchange_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_controlchangehook(controlchange_callback_hook)
+            else:
+                libpd.libpd_set_controlchangehook(controlchange_callback_hook)
         else:
-            controlchange_callback = None
+            __CALLBACKS['controlchange_callback'] = None
 
     def set_programchange_callback(self, callback):
         """set the MIDI program change callback to receive from [pgmout] objects,
@@ -1102,12 +1138,14 @@ cdef class Patch:
 
         note: do not call this while DSP is running
         """
-        global programchange_callback
         if callable(callback):
-            programchange_callback = callback
-            libpd.libpd_set_programchangehook(programchange_callback_hook)
+            __CALLBACKS['programchange_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_programchangehook(programchange_callback_hook)
+            else:
+                libpd.libpd_set_programchangehook(programchange_callback_hook)
         else:
-            programchange_callback = None
+            __CALLBACKS['programchange_callback'] = None
 
     def set_pitchbend_callback(self, callback):
         """set the MIDI pitch bend hook to receive from [bendout] objects,
@@ -1115,12 +1153,14 @@ cdef class Patch:
 
         note: do not call this while DSP is running
         """
-        global pitchbend_callback
         if callable(callback):
-            pitchbend_callback = callback
-            libpd.libpd_set_pitchbendhook(pitchbend_callback_hook)
+            __CALLBACKS['pitchbend_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_pitchbendhook(pitchbend_callback_hook)
+            else:
+                libpd.libpd_set_pitchbendhook(pitchbend_callback_hook)
         else:
-            pitchbend_callback = None
+            __CALLBACKS['pitchbend_callback'] = None
 
     def set_aftertouch_callback(self, callback):
         """set the MIDI after touch hook to receive from [touchout] objects,
@@ -1128,12 +1168,14 @@ cdef class Patch:
 
         note: do not call this while DSP is running
         """
-        global aftertouch_callback
         if callable(callback):
-            aftertouch_callback = callback
-            libpd.libpd_set_aftertouchhook(aftertouch_callback_hook)
+            __CALLBACKS['aftertouch_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_aftertouchhook(aftertouch_callback_hook)
+            else:
+                libpd.libpd_set_aftertouchhook(aftertouch_callback_hook)
         else:
-            aftertouch_callback = None
+            __CALLBACKS['aftertouch_callback'] = None
 
     def set_polyaftertouch_callback(self, callback):
         """set the MIDI poly after touch hook to receive from [polytouchout] objects,
@@ -1141,12 +1183,14 @@ cdef class Patch:
 
         note: do not call this while DSP is running
         """
-        global polyaftertouch_callback
         if callable(callback):
-            polyaftertouch_callback = callback
-            libpd.libpd_set_polyaftertouchhook(polyaftertouch_callback_hook)
+            __CALLBACKS['polyaftertouch_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_polyaftertouchhook(polyaftertouch_callback_hook)
+            else:
+                libpd.libpd_set_polyaftertouchhook(polyaftertouch_callback_hook)
         else:
-            polyaftertouch_callback = None
+            __CALLBACKS['polyaftertouch_callback'] = None
 
     def set_midibyte_callback(self, callback):
         """set the raw MIDI byte hook to receive from [midiout] objects,
@@ -1154,12 +1198,14 @@ cdef class Patch:
 
         note: do not call this while DSP is running
         """
-        global midibyte_callback
         if callable(callback):
-            midibyte_callback = callback
-            libpd.libpd_set_midibytehook(midibyte_callback_hook)
+            __CALLBACKS['midibyte_callback'] = callback
+            if self.queued:
+                libpd.libpd_set_queued_midibytehook(midibyte_callback_hook)
+            else:
+                libpd.libpd_set_midibytehook(midibyte_callback_hook)
         else:
-            midibyte_callback = None
+            __CALLBACKS['midibyte_callback'] = None
 
     #-------------------------------------------------------------------------
     # Gui
@@ -1255,6 +1301,30 @@ cdef class Patch:
         pd.sys_getversion(&major, &minor, &bugfix)
         return f'{major}.{minor}.{bugfix}'
 
+
+    #-------------------------------------------------------------------------
+    # extended api
+
+    def queued_init(self) -> int:
+        """initialize libpd and the queued ringbuffers, use in place of libpd_init()
+        
+        this is safe to call more than once
+        returns 0 on success, -1 if libpd was already initialized, or -2 if ring
+        buffer allocation failed
+        """
+        return libpd.libpd_queued_init()
+
+    def queued_release(self):
+        """free the queued ringbuffers"""
+        libpd.libpd_queued_release()
+
+    def queued_receive_pd_messages(self):
+        """process and dispatch received messages in message ringbuffer"""
+        libpd.libpd_queued_receive_pd_messages()
+
+    def queued_receive_midi_messages(self):
+        """process and dispatch receive midi messages in MIDI message ringbuffer"""
+        libpd.libpd_queued_receive_midi_messages()
 
 # ----------------------------------------------------------------------------
 # experimental atom class

@@ -1039,8 +1039,194 @@ def pd_version() -> str:
 
 
 #-------------------------------------------------------------------------
-# class helper
+# extended api
 
+def set_queued_print_callback(callback):
+    """set the queued print receiver callback, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['print_callback'] = callback
+        libpd.libpd_set_queued_printhook(print_callback_hook)
+    else:
+        __CALLBACKS['print_callback'] = None
+
+def set_queued_bang_callback(callback):
+    """set the queued bang receiver hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['bang_callback'] = callback
+        libpd.libpd_set_queued_banghook(bang_callback_hook)
+    else:
+        __CALLBACKS['bang_callback'] = None
+
+def set_queued_float_callback(callback):
+    """set the queued float receiver hook, NULL by default
+
+    note: avoid calling this while DSP is running
+    note: you can either have a queued float receiver hook, or a queued
+          double receiver hook (see below), but not both.
+          calling this, will automatically unset the queued double receiver
+          hook
+    """
+    if callable(callback):
+        __CALLBACKS['float_callback'] = callback
+        libpd.libpd_set_queued_floathook(float_callback_hook)
+    else:
+        __CALLBACKS['float_callback'] = None
+
+def set_queued_double_callback(callback):
+    """set the queued double receiver hook, NULL by default
+
+    note: avoid calling this while DSP is running
+    note: you can either have a queued double receiver hook, or a queued
+          float receiver hook (see above), but not both.
+          calling this, will automatically unset the queued float receiver
+          hook
+    """
+    if callable(callback):
+        __CALLBACKS['double_callback'] = callback
+        libpd.libpd_set_queued_doublehook(double_callback_hook)
+    else:
+        __CALLBACKS['double_callback'] = None
+
+def set_queued_symbol_callback(callback):
+    """set the queued symbol receiver hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['symbol_callback'] = callback
+        libpd.libpd_set_queued_symbolhook(symbol_callback_hook)
+    else:
+        __CALLBACKS['symbol_callback'] = None
+
+def set_queued_list_callback(callback):
+    """set the queued list receiver hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['list_callback'] = callback
+        libpd.libpd_set_queued_listhook(list_callback_hook)
+    else:
+        __CALLBACKS['list_callback'] = None
+
+def set_queued_message_callback(callback):
+    """set the queued typed message receiver hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['message_callback'] = callback
+        libpd.libpd_set_queued_messagehook(message_callback_hook)
+    else:
+        __CALLBACKS['message_callback'] = None
+
+def set_queued_noteon_callback(callback):
+    """set the queued MIDI note on hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['noteon_callback'] = callback
+        libpd.libpd_set_queued_noteonhook(noteon_callback_hook)
+    else:
+        __CALLBACKS['noteon_callback'] = None
+
+def set_queued_controlchange_callback(callback):
+    """set the queued MIDI control change hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['controlchange_callback'] = callback
+        libpd.libpd_set_queued_controlchangehook(controlchange_callback_hook)
+    else:
+        __CALLBACKS['controlchange_callback'] = None
+
+def set_queued_programchange_callback(callback):
+    """set the queued MIDI program change hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['programchange_callback'] = callback
+        libpd.libpd_set_queued_programchangehook(programchange_callback_hook)
+    else:
+        __CALLBACKS['programchange_callback'] = None
+
+def set_queued_pitchbend_callback(callback):
+    """set the queued MIDI pitch bend hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['pitchbend_callback'] = callback
+        libpd.libpd_set_queued_pitchbendhook(pitchbend_callback_hook)
+    else:
+        __CALLBACKS['pitchbend_callback'] = None
+
+def set_queued_aftertouch_callback(callback):
+    """set the queued MIDI aftertouch hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['aftertouch_callback'] = callback
+        libpd.libpd_set_queued_aftertouchhook(aftertouch_callback_hook)
+    else:
+        __CALLBACKS['aftertouch_callback'] = None
+
+def set_queued_polyaftertouch_callback(callback):
+    """set the queued MIDI polyaftertouch hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['polyaftertouch_callback'] = callback
+        libpd.libpd_set_queued_polyaftertouchhook(polyaftertouch_callback_hook)
+    else:
+        __CALLBACKS['polyaftertouch_callback'] = None
+
+def set_queued_midibyte_callback(callback):
+    """set the queued MIDI byte hook, NULL by default
+
+    note: do not call this while DSP is running
+    """
+    if callable(callback):
+        __CALLBACKS['midibyte_callback'] = callback
+        libpd.libpd_set_queued_midibytehook(midibyte_callback_hook)
+    else:
+        __CALLBACKS['midibyte_callback'] = None
+
+def queued_init() -> int:
+    """initialize libpd and the queued ringbuffers, use in place of libpd_init()
+    
+    this is safe to call more than once
+    returns 0 on success, -1 if libpd was already initialized, or -2 if ring
+    buffer allocation failed
+    """
+    return libpd.libpd_queued_init()
+
+def queued_release():
+    """free the queued ringbuffers"""
+    libpd.libpd_queued_release()
+
+def queued_receive_pd_messages():
+    """process and dispatch received messages in message ringbuffer"""
+    libpd.libpd_queued_receive_pd_messages()
+
+def queued_receive_midi_messages():
+    """process and dispatch receive midi messages in MIDI message ringbuffer"""
+    libpd.libpd_queued_receive_midi_messages()
+
+
+#-------------------------------------------------------------------------
+# class helper
 
 # cdef class PdManager:
 #     cdef const short* __out_bufffer
@@ -1059,4 +1245,3 @@ def pd_version() -> str:
 
 #         # process_double(self.__ticks, in_buffer, self.__out_bufffer)
 #         # return self.__out_bufffer
-

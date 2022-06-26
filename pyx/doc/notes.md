@@ -18,8 +18,8 @@ Steps to writing a PortAudio application using the callback technique:
 6. Close the stream and terminate the library.
 
 
-
 ## Links
+
 
 ### cython array variants
 
@@ -50,6 +50,19 @@ Steps to writing a PortAudio application using the callback technique:
 - [How to convert python array to cython array? - Stack Overflow](https://stackoverflow.com/questions/11689967/how-to-convert-python-array-to-cython-array)
 
 - [c - Return a 2D Cython pointer to Python array - Stack Overflow](https://stackoverflow.com/questions/62084515/return-a-2d-cython-pointer-to-python-array)
+
+
+
+### concurrency and parallelism
+
+- [Structured Concurrency - Lucian Radu Teodorescu - ACCU 2022](https://www.youtube.com/watch?v=Xq2IMOPjPs0)
+
+- [std::execution, the proposed C++ framework for asynchronous and parallel programming](https://github.com/brycelelbach/wg21_p2300_std_execution)
+
+- [Working with Asynchrony Generically: A Tour of C++ Executors (part 1/2) - Eric Niebler - CppCon 21](https://www.youtube.com/watch?v=xLboNIf7BTg)
+
+- [Working with Asynchrony Generically: A Tour of C++ Executors (part 2/2) - Eric Niebler - CppCon 21](https://www.youtube.com/watch?v=6a0zzUBUNW4)
+
 
 ### Threading
 
