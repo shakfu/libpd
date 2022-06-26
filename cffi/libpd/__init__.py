@@ -1,3 +1,5 @@
+import array
+
 from ._libpd import lib, ffi
 
 #-------------------------------------------------------------------------
@@ -143,51 +145,51 @@ def init_audio(in_channels: int, out_channels: int, sample_rate: int) -> int:
 # #-------------------------------------------------------------------------
 # # Atom operations
 
-# cdef bint is_float(pd.t_atom *a):
-#     """check if an atom is a float type: 0 or 1
+def is_float(atom) -> bool:
+    """check if an atom is a float type: 0 or 1
 
-#     note: no NULL check is performed
-#     """
-#     return lib.libpd_is_float(a)
+    note: no NULL check is performed
+    """
+    return lib.libpd_is_float(atom) == 1
 
-# cdef bint is_symbol(pd.t_atom *a):
-#     """check if an atom is a symbol type: 0 or 1
+def is_symbol(atom) -> bool:
+    """check if an atom is a symbol type: 0 or 1
 
-#     note: no NULL check is performed
-#     """
-#     return lib.libpd_is_symbol(a)
+    note: no NULL check is performed
+    """
+    return lib.libpd_is_symbol(atom) == 1
 
-# cdef void set_float(pd.t_atom *a, float x):
-#     """write a float value to the given atom"""
-#     lib.libpd_set_float(a, x)
+def set_float(atom, f: float):
+    """write a float value to the given atom"""
+    lib.libpd_set_float(atom, f)
 
-# cdef float get_float(pd.t_atom *a):
-#     """get the float value of an atom
+def get_float(atom) -> float:
+    """get the float value of an atom
 
-#     note: no NULL or type checks are performed
-#     """
-#     return lib.libpd_get_float(a)
+    note: no NULL or type checks are performed
+    """
+    return lib.libpd_get_float(atom)
 
-# cdef void set_symbol(pd.t_atom *a, const char *symbol):
-#     """write a symbol value to the given atom.
+def set_symbol(atom, symbol: str):
+    """write a symbol value to the given atom.
 
-#     requires that libpd_init has already been called.
-#     """
-#     lib.libpd_set_symbol(a, symbol)
+    requires that libpd_init has already been called.
+    """
+    lib.libpd_set_symbol(atom, symbol.encode('utf-8'))
 
-# cdef const char *get_symbol(pd.t_atom *a):
-#     """get symbol value of an atom
+def get_symbol(atom):
+    """get symbol value of an atom
 
-#     note: no NULL or type checks are performed
-#     """
-#     return lib.libpd_get_symbol(a)
+    note: no NULL or type checks are performed
+    """
+    return lib.libpd_get_symbol(atom).decode()
 
-# cdef pd.t_atom *next_atom(pd.t_atom *a):
-#     """increment to the next atom in an atom vector
+def next_atom(atom):
+    """increment to the next atom in an atom vector
 
-#     returns next atom or NULL, assuming the atom vector is NULL-terminated
-#     """
-#     return lib.libpd_next_atom(a)
+    returns next atom or NULL, assuming the atom vector is NULL-terminated
+    """
+    return lib.libpd_next_atom(a)
 
 
 # #-------------------------------------------------------------------------
@@ -208,23 +210,23 @@ def resize_array(name: str, size: int) -> int:
     """
     return lib.libpd_resize_array(name.encode('utf-8'), size)
 
-# cdef int read_array(float *dest, const char *name, int offset, int n):
-#     """read n values from named src array and write into dest starting at an offset
+def read_array(dest: array.array, name: str, offset: int, n: str) -> int:
+    """read n values from named src array and write into dest starting at an offset
 
-#     note: performs no bounds checking on dest
-#     returns 0 on success or a negative error code if the array is non-existent
-#     or offset + n exceeds range of array
-#     """
-#     return lib.libpd_read_array(dest, name, offset, n)
+    note: performs no bounds checking on dest
+    returns 0 on success or a negative error code if the array is non-existent
+    or offset + n exceeds range of array
+    """
+    return lib.libpd_read_array(dest, name.encode('utf-8'), offset, n) == 0
 
-# cdef int write_array(const char *name, int offset, const float *src, int n):
-#     """read n values from src and write into named dest array starting at an offset
+def write_array(name: str, offset: int, src: array.array, n: int) -> int:
+    """read n values from src and write into named dest array starting at an offset
 
-#     note: performs no bounds checking on src
-#     returns 0 on success or a negative error code if the array is non-existent
-#     or offset + n exceeds range of array
-#     """
-#     return lib.libpd_write_array(name, offset, src, n)
+    note: performs no bounds checking on src
+    returns 0 on success or a negative error code if the array is non-existent
+    or offset + n exceeds range of array
+    """
+    return lib.libpd_write_array(name.encode('utf-8'), offset, src, int) == 0
 
 # #-------------------------------------------------------------------------
 # # Sending messages to pd
@@ -277,43 +279,56 @@ def add_symbol(symbol: str):
 # #-------------------------------------------------------------------------
 # # Sending compound messages: atom array
 
-# def send_list(recv, *args):
-#     """send an atom array of a given length as a list to a destination receiver
-#     """
-#     return process_args(args) or finish_list(recv)
+def process_args(args):
+    if lib.libpd_start_message(len(args)):
+        return -2
+    for arg in args:
+        if isinstance(arg, str):
+            lib.libpd_add_symbol(arg.encode('utf-8'))
+        else:
+            if isinstance(arg, int) or isinstance(arg, float):
+                lib.libpd_add_float(arg)
+            else:
+                return -1
+    return 0
+
+def send_list(recv, *args):
+    """send an atom array of a given length as a list to a destination receiver
+    """
+    return process_args(args) or finish_list(recv)
 
 
-# def send_message(recv, symbol, *args):
-#     """send an atom array of a given length as a typed message to a destination receiver
-#     """
-#     return process_args(args) or finish_message(recv, symbol)
+def send_message(recv, symbol, *args):
+    """send an atom array of a given length as a typed message to a destination receiver
+    """
+    return process_args(args) or finish_message(recv, symbol)
 
 
-# def finish_list(recv: str) -> int:
-#     """finish current message and send as a list to a destination receiver
+def finish_list(recv: str) -> int:
+    """finish current message and send as a list to a destination receiver
 
-#     returns 0 on success or -1 if receiver name is non-existent
-#     ex: send [list 1 2 bar( to [s foo] on the next tick with:
-#         libpd_start_message(3)
-#         libpd_add_float(1)
-#         libpd_add_float(2)
-#         libpd_add_symbol("bar")
-#         libpd_finish_list("foo")
-#     """
-#     return lib.libpd_finish_list(recv.encode('utf-8'))
+    returns 0 on success or -1 if receiver name is non-existent
+    ex: send [list 1 2 bar( to [s foo] on the next tick with:
+        libpd_start_message(3)
+        libpd_add_float(1)
+        libpd_add_float(2)
+        libpd_add_symbol("bar")
+        libpd_finish_list("foo")
+    """
+    return lib.libpd_finish_list(recv.encode('utf-8')) == 0
 
-# def finish_message(recv: str, msg: str) -> int:
-#     """finish current message and send as a typed message to a destination receiver
+def finish_message(recv: str, msg: str) -> int:
+    """finish current message and send as a typed message to a destination receiver
 
-#     note: typed message handling currently only supports up to 4 elements
-#           internally, additional elements may be ignored
-#     returns 0 on success or -1 if receiver name is non-existent
-#     ex: send [ pd dsp 1( on the next tick with:
-#         libpd_start_message(1)
-#         libpd_add_float(1)
-#         libpd_finish_message("pd", "dsp")
-#     """
-#     return lib.libpd_finish_message(recv.encode('utf-8'), msg.encode('utf-8'))
+    note: typed message handling currently only supports up to 4 elements
+          internally, additional elements may be ignored
+    returns 0 on success or -1 if receiver name is non-existent
+    ex: send [ pd dsp 1( on the next tick with:
+        libpd_start_message(1)
+        libpd_add_float(1)
+        libpd_finish_message("pd", "dsp")
+    """
+    return lib.libpd_finish_message(recv.encode('utf-8'), msg.encode('utf-8')) == 0
 
 # #-------------------------------------------------------------------------
 # # Convenience messages methods
@@ -323,41 +338,41 @@ def add_symbol(symbol: str):
 # #-------------------------------------------------------------------------
 # # Receiving messages from pd
 
-# def subscribe(source: str):
-#     """subscribe to messages sent to a source receiver
+def subscribe(source: str):
+    """subscribe to messages sent to a source receiver
 
-#     ex: libpd_bind("foo") adds a "virtual" [r foo] which forwards messages to
-#         the libpd message hooks
-#     returns an opaque receiver pointer or NULL on failure
-#     """
-#     cdef uintptr_t ptr = <uintptr_t>lib.libpd_bind(source.encode('utf-8'))
-#     if source not in __LIBPD_SUBSCRIPTIONS:
-#         __LIBPD_SUBSCRIPTIONS[source] = ptr
+    ex: libpd_bind("foo") adds a "virtual" [r foo] which forwards messages to
+        the libpd message hooks
+    returns an opaque receiver pointer or NULL on failure
+    """
+    ptr = lib.libpd_bind(source.encode('utf-8'))
+    if source not in __LIBPD_SUBSCRIPTIONS:
+        __LIBPD_SUBSCRIPTIONS[source] = ptr
 
-# def unsubscribe(source: str):
-#     """unsubscribe and free a source receiver object created by libpd_bind()"""
-#     cdef uintptr_t ptr = <uintptr_t>__LIBPD_SUBSCRIPTIONS[source]
-#     lib.libpd_unbind(<void*>ptr)
+def unsubscribe(source: str):
+    """unsubscribe and free a source receiver object created by libpd_bind()"""
+    ptr = __LIBPD_SUBSCRIPTIONS[source]
+    lib.libpd_unbind(ptr)
 
-# def exists(recv: str) -> bool:
-#     """check if a source receiver object exists with a given name
+def exists(recv: str) -> bool:
+    """check if a source receiver object exists with a given name
 
-#     returns 1 if the receiver exists, otherwise 0
-#     """
-#     return lib.libpd_exists(recv.encode('utf-8'))
+    returns 1 if the receiver exists, otherwise 0
+    """
+    return lib.libpd_exists(recv.encode('utf-8'))
 
-# def release():
-#     """shutdown libpd and releases all resources
+def release():
+    """shutdown libpd and releases all resources
 
-#     close all open patches and unsubscribe to all subscriptions
-#     """
-#     for p in __LIBPD_PATCHES.keys():
-#         close_patch(p)
-#     __LIBPD_PATCHES.clear()
+    close all open patches and unsubscribe to all subscriptions
+    """
+    for p in __LIBPD_PATCHES.keys():
+        close_patch(p)
+    __LIBPD_PATCHES.clear()
 
-#     for p in __LIBPD_SUBSCRIPTIONS.keys():
-#         unsubscribe(p)
-#     __LIBPD_SUBSCRIPTIONS.clear()
+    for p in __LIBPD_SUBSCRIPTIONS.keys():
+        unsubscribe(p)
+    __LIBPD_SUBSCRIPTIONS.clear()
 
 # def set_print_callback(callback):
 #     """set the print receiver callback, prints to stdout by default
@@ -615,7 +630,7 @@ def sysrealtime(port: int, byte: int) -> int:
 # #-------------------------------------------------------------------------
 # # Gui
 
-def start_gui(str path):
+def start_gui(path: str):
     """open the current patches within a pd vanilla GUI
 
     requires the path to pd's main folder that contains bin/, tcl/, etc
