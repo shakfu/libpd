@@ -49,8 +49,11 @@ EXTRA_OBJECTS = [
 # so it is often just the "#include".
 ffibuilder.set_source("libpd._libpd",
 """
-#include "../libpd_wrapper/z_libpd.h"   // the C header of the library
-#include "../pure-data/src/m_pd.h"
+#include "../pure-data/src/m_pd.h"              // puredata api 
+
+#include "../libpd_wrapper/z_libpd.h"           // libpd core api
+#include "../libpd_wrapper/util/z_queued.h"     // libpd extended queued api
+#include "../libpd_wrapper/util/z_print_util.h" // libpd extended print_util api
 
 // --------------------------------------------------------------------------
 // custom
@@ -219,6 +222,35 @@ int libpd_poll_gui();
 void libpd_set_verbose(int verbose);
 int libpd_get_verbose();
 
+// ---------------------------------------------------------------------------
+// extended api: util/z_queued.h
+
+// extended queued api
+void libpd_set_queued_printhook(const t_libpd_printhook hook);
+void libpd_set_queued_banghook(const t_libpd_banghook hook);
+void libpd_set_queued_floathook(const t_libpd_floathook hook);
+void libpd_set_queued_doublehook(const t_libpd_doublehook hook);
+void libpd_set_queued_symbolhook(const t_libpd_symbolhook hook);
+void libpd_set_queued_listhook(const t_libpd_listhook hook);
+void libpd_set_queued_messagehook(const t_libpd_messagehook hook);
+void libpd_set_queued_noteonhook(const t_libpd_noteonhook hook);
+void libpd_set_queued_controlchangehook(const t_libpd_controlchangehook hook);
+void libpd_set_queued_programchangehook(const t_libpd_programchangehook hook);
+void libpd_set_queued_pitchbendhook(const t_libpd_pitchbendhook hook);
+void libpd_set_queued_aftertouchhook(const t_libpd_aftertouchhook hook);
+void libpd_set_queued_polyaftertouchhook(const t_libpd_polyaftertouchhook hook);
+void libpd_set_queued_midibytehook(const t_libpd_midibytehook hook);
+int libpd_queued_init();
+void libpd_queued_release();
+void libpd_queued_receive_pd_messages();
+void libpd_queued_receive_midi_messages();
+
+// ---------------------------------------------------------------------------
+// extended api: util/z_print_util.h
+
+// extended print_util api
+void libpd_set_concatenated_printhook(const t_libpd_printhook hook);
+void libpd_print_concatenator(const char *s);
 
 // --------------------------------------------------------------------------
 // custom
