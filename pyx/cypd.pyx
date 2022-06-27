@@ -325,33 +325,35 @@ cdef class Patch:
         ## APP-SPECIFIC END         
         ##---------------------------------------------------------------
 
-        # Initialize our data for use by callback.
-        for i in range(self.blocksize):
-            data.outbuf[i] = 0
-        
-        # Initialize library before making any other calls.
-        err = libportaudio.Pa_Initialize()
-        if err != libportaudio.paNoError:
-            self.terminate(err, self.handle)
+        with nogil:
 
-        # Open an audio I/O stream.
-        err = libportaudio.Pa_OpenDefaultStream(
-            &stream,
-            self.in_channels,        # input channels
-            self.out_channels,       # output channels
-            libportaudio.paFloat32,  # 32 bit floating point output
-            self.sample_rate,
-            <long>self.blocksize,    # frames per buffer
-            audio_callback,
-            &data)
-        if (err != libportaudio.paNoError):
-            self.terminate(err, self.handle)
+            # Initialize our data for use by callback.
+            for i in range(self.blocksize):
+                data.outbuf[i] = 0
+            
+            # Initialize library before making any other calls.
+            err = libportaudio.Pa_Initialize()
+            if err != libportaudio.paNoError:
+                self.terminate(err, self.handle)
 
-        err = libportaudio.Pa_StartStream(stream)
-        if (err != libportaudio.paNoError):
-            self.terminate(err, self.handle)
+            # Open an audio I/O stream.
+            err = libportaudio.Pa_OpenDefaultStream(
+                &stream,
+                self.in_channels,        # input channels
+                self.out_channels,       # output channels
+                libportaudio.paFloat32,  # 32 bit floating point output
+                self.sample_rate,
+                <long>self.blocksize,    # frames per buffer
+                audio_callback,
+                &data)
+            if (err != libportaudio.paNoError):
+                self.terminate(err, self.handle)
 
-        libportaudio.Pa_Sleep(PRERUN_SLEEP)
+            err = libportaudio.Pa_StartStream(stream)
+            if (err != libportaudio.paNoError):
+                self.terminate(err, self.handle)
+
+        libportaudio.Pa_Sleep(PRERUN_SLEEP) # creates a pause before playing
 
         # -----------------------------------------------------------------
         # RUN HERE
@@ -382,7 +384,7 @@ cdef class Patch:
     #-------------------------------------------------------------------------
     # Termination
 
-    cdef terminate(self, libportaudio.PaError err, void *handle):
+    cdef void terminate(self, libportaudio.PaError err, void *handle) nogil:
         libportaudio.Pa_Terminate()
         fprintf(stderr, "An error occured while using the portaudio stream\n")
         fprintf(stderr, "Error number: %d\n", err)
