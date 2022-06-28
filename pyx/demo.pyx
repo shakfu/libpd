@@ -1,4 +1,13 @@
 # demo.pyx
+"""
+This cython file tests array access and conversion
+
+
+
+
+
+
+"""
 
 cimport pd
 cimport libpd
@@ -26,6 +35,54 @@ def dump(float[:] view):
     for i in range(BUFF_SIZE):
         print(i, view[i])
 
+cdef void zero(float[:] view):
+    view[:] = 0.0
+    # also
+    # view[...] = 0.0
+
+# cdef void zero(float *buf):
+#     for i in range(BUFF_SIZE):
+#         buf[i] = 0.0
+
+# ----------------------------------------------------------------------------
+# to test
+
+cdef float inbuf[BUFF_SIZE]
+cdef float outbuf[BUFF_SIZE]
+
+# writing directly to c-buffer
+zero(inbuf)
+zero(outbuf)
+
+# for i in range(BUFF_SIZE):
+#     inbuf[i] = 0.0
+#     outbuf[i] = 0.0
+
+cdef int process_float(const float *in_buffer, float *out_buffer):
+    for i in range(BUFF_SIZE):
+        out_buffer[i] = in_buffer[i] + 5.1
+    return 0
+
+process_float(inbuf, outbuf)
+xs = outbuf
+
+assert(type(xs) == type(outbuf)) # now this is true
+
+
+cdef float inbuf0[BUFF_SIZE]
+cdef float outbuf0[BUFF_SIZE]
+
+# writing directly to c-buffer
+zero(inbuf0)
+zero(outbuf0)
+
+cdef int process_float0(float[:] in_buffer, float[:] out_buffer):
+    for i in range(BUFF_SIZE):
+        out_buffer[i] = in_buffer[i] + 4.1
+    return 0
+
+process_float0(inbuf0, outbuf0)
+ys = outbuf0
 
 # ----------------------------------------------------------------------------
 # test regular c buffer interface
@@ -96,48 +153,48 @@ dump_narr = lambda: dump(narr_view)
 # 
 # different ways of wrapping libpd.libpd_process_float
 
-cpdef process_float(int ticks, float[:] in_buffer, float[:] out_buffer = None):
-    cdef float[BUFF_SIZE] inbuff
-    cdef float[BUFF_SIZE] outbuff
-    cdef int i
-    if out_buffer is None:
-        out_buffer = array.array('f', [0.0] * BUFF_SIZE)
+# cpdef process_float0(int ticks, float[:] in_buffer, float[:] out_buffer = None):
+#     cdef float[BUFF_SIZE] inbuff
+#     cdef float[BUFF_SIZE] outbuff
+#     cdef int i
+#     if out_buffer is None:
+#         out_buffer = array.array('f', [0.0] * BUFF_SIZE)
 
-    for i in range(BUFF_SIZE):
-        inbuff[i] = in_buffer[i]
-        outbuff[i] = out_buffer[i]
+#     for i in range(BUFF_SIZE):
+#         inbuff[i] = in_buffer[i]
+#         outbuff[i] = out_buffer[i]
 
-    libpd.libpd_process_float(ticks, <const float*>inbuff, <float*>outbuff)
-    return out_buffer
+#     libpd.libpd_process_float(ticks, <const float*>inbuff, <float*>outbuff)
+#     return out_buffer
 
 
-def process_float1(int ticks, array.array in_buffer, array.array out_buffer = None):
-    cdef float[:] in_buffer_view = in_buffer
-    cdef float[:] out_buffer_view = out_buffer
-    if out_buffer is None:
-        out_buffer_view[:] = array.array('f', [0.0] * BUFF_SIZE)
-    cdef float[BUFF_SIZE] inbuff;
-    cdef float[BUFF_SIZE] outbuff;
-    cdef float[:] inbuff_view = inbuff
-    cdef float[:] outbuff_view = outbuff
-    inbuff_view[:] = in_buffer_view
-    outbuff_view[:] = out_buffer_view
-    libpd.libpd_process_float(ticks, <const float*>inbuff, <float*>outbuff)
-    return out_buffer
+# def process_float1(int ticks, array.array in_buffer, array.array out_buffer = None):
+#     cdef float[:] in_buffer_view = in_buffer
+#     cdef float[:] out_buffer_view = out_buffer
+#     if out_buffer is None:
+#         out_buffer_view[:] = array.array('f', [0.0] * BUFF_SIZE)
+#     cdef float[BUFF_SIZE] inbuff;
+#     cdef float[BUFF_SIZE] outbuff;
+#     cdef float[:] inbuff_view = inbuff
+#     cdef float[:] outbuff_view = outbuff
+#     inbuff_view[:] = in_buffer_view
+#     outbuff_view[:] = out_buffer_view
+#     libpd.libpd_process_float(ticks, <const float*>inbuff, <float*>outbuff)
+#     return out_buffer
 
-def process_float2(int ticks, array.array in_buffer, array.array out_buffer = None):
-    cdef float[BUFF_SIZE] inbuff
-    cdef float[BUFF_SIZE] outbuff
-    cdef int i
-    if out_buffer is None:
-        out_buffer = array.array('f', [0.0] * BUFF_SIZE)
+# def process_float2(int ticks, array.array in_buffer, array.array out_buffer = None):
+#     cdef float[BUFF_SIZE] inbuff
+#     cdef float[BUFF_SIZE] outbuff
+#     cdef int i
+#     if out_buffer is None:
+#         out_buffer = array.array('f', [0.0] * BUFF_SIZE)
 
-    for i in range(BUFF_SIZE):
-        inbuff = in_buffer[i]
-        outbuff = out_buffer[i]
+#     for i in range(BUFF_SIZE):
+#         inbuff = in_buffer[i]
+#         outbuff = out_buffer[i]
 
-    libpd.libpd_process_float(ticks, <const float*>inbuff, <float*>outbuff)
-    return out_buffer
+#     libpd.libpd_process_float(ticks, <const float*>inbuff, <float*>outbuff)
+#     return out_buffer
 
 
 # ----------------------------------------------------------------------------
