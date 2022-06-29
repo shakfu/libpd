@@ -104,4 +104,5 @@ setup(
             # 'wraparound': False,    # allow negative indexes to fetch the end of an array
 
         }),
+    zip_safe=False,
 )
