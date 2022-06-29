@@ -184,18 +184,54 @@ dump_narr = lambda: dump(narr_view)
 # different ways of wrapping libpd.libpd_process_float
 # 
 # these forms are unecessary and inelegant
-# 
+
+# cdef object _wrap_libpd_process_float(object py_ticks, object py_inbuff, object py_outbuf):
+#     cdef int ticks = <int>py_ticks
+#     cdef float *inbuff = <float *>py_inbuff 
+#     cdef float *outbuf = <float *>py_outbuf
+#     cdef int result
+#     cdef Py_ssize_t dummy1
+#     cdef Py_ssize_t dummy2
+    
+#     if (PyObject_AsReadBuffer(py_inbuff, <void **>&inbuff, &dummy1)):
+#         return NULL  
+    
+#     if (PyObject_AsWriteBuffer(py_outbuf, <void **>&outbuf, &dummy2)):
+#         return NULL  
+  
+#     result = <int>libpd_process_float(ticks, <float *>inbuff, outbuf)
+#     return int(result)
+
 
 cdef int process_float_0(int ticks, float[:] in_buffer, float[:] out_buffer):
     cdef float[BUFFSIZE] inbuff
-    cdef float[BUFFSIZE] outbuff 
+    cdef float[BUFFSIZE] outbuff
+    cdef int result
+    inbuf = in_buffer[:]
+    outbuf = out_buffer[:]
+    result = libpd.libpd_process_float(<int>ticks, <const float*>inbuff, <float*>outbuff)
+    return result
+
+
+cdef int process_float_0_alt(int ticks, float[:] in_buffer, float[:] out_buffer):
+    cdef float* inbuff = NULL
+    cdef float* outbuff = NULL
+    cdef int result
+    inbuf = in_buffer[:]
+    outbuf = out_buffer[:]
+    result = libpd.libpd_process_float(ticks, inbuff, outbuff)
+    return result
+
+def process_float_1(int ticks, float[::1] in_buffer, float[::1] out_buffer):
+    cdef float[BUFFSIZE] inbuff
+    cdef float[BUFFSIZE] outbuff # these have to proper size 
     inbuf = in_buffer[:]
     outbuf = out_buffer[:]
     libpd.libpd_process_float(ticks, inbuff, outbuff)
     return 0
 
 
-def process_float_1(int ticks, float[:] in_buffer, float[:] out_buffer):
+def process_float_2(int ticks, float[:] in_buffer, float[:] out_buffer):
     cdef float[BUFFSIZE] inbuff
     cdef float[BUFFSIZE] outbuff # these have to proper size 
     inbuf = in_buffer[:]

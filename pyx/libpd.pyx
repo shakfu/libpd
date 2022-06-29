@@ -411,7 +411,6 @@ cdef int process_float(const int ticks, const float *in_buffer, float *out_buffe
     """
     return libpd.libpd_process_float(ticks, in_buffer, out_buffer)
 
-
 cdef int process_short(const int ticks, const short *in_buffer, short *out_buffer) nogil:
     """process interleaved short samples from in_buffer -> libpd -> out_buffer
 
