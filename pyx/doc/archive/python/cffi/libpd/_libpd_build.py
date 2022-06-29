@@ -21,9 +21,9 @@ DEFINE_MACROS = [
 
 INCLUDE_DIRS = [
     "/usr/local/include",
-    "../libpd_wrapper",
-    "../libpd_wrapper/util",
-    "../pure-data/src",
+    "../../libpd_wrapper",
+    "../../libpd_wrapper/util",
+    "../../pure-data/src",
 ]
 
 LIBRARIES = [
@@ -35,11 +35,11 @@ LIBRARIES = [
 
 LIBRARY_DIRS = [
     '/usr/local/lib',
-    '../libs',
+    '../../libs',
 ]
 
 EXTRA_OBJECTS = [
-    '../libs/libpd.a',
+    '../../libs/libpd.a',
 ]
 
 
@@ -50,11 +50,11 @@ EXTRA_OBJECTS = [
 # so it is often just the "#include".
 ffibuilder.set_source("libpd._libpd",
 """
-#include "../pure-data/src/m_pd.h"              // puredata api 
+#include "../../pure-data/src/m_pd.h"              // puredata api 
 
-#include "../libpd_wrapper/z_libpd.h"           // libpd core api
-#include "../libpd_wrapper/util/z_queued.h"     // libpd extended queued api
-#include "../libpd_wrapper/util/z_print_util.h" // libpd extended print_util api
+#include "../../libpd_wrapper/z_libpd.h"           // libpd core api
+#include "../../libpd_wrapper/util/z_queued.h"     // libpd extended queued api
+#include "../../libpd_wrapper/util/z_print_util.h" // libpd extended print_util api
 
 // --------------------------------------------------------------------------
 // custom

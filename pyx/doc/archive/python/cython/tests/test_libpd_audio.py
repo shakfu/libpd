@@ -1,9 +1,10 @@
+
 import sys
 from os.path import dirname
 
 sys.path.insert(0, dirname(dirname(__file__)))
 
-import cypd
+import libpd
 
 
-cypd.test_Atom()
+libpd.play(name='test.pd', dir='tests/pd')
