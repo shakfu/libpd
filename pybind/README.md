@@ -15,7 +15,18 @@ To build and test binder
 
 4. run `./build.sh` in this directory and a demo python extension should be in the `build` directory
 
+## Status
+
+- [x] build via setup.py
+
+- [ ] build via cmake
+
 
 ## TODO
 
-- fix residual linking bug related to `libpd_wapper/util/z_print_util`
+- [ ] drop the `pd` namespace if possible from generated `libpd` module
+
+- [ ] test setup.py build more systematically
+
+- [ ] fix cmake build:
+   - [ ] fix residual linking bug related to `libpd_wapper/util/z_print_util`
