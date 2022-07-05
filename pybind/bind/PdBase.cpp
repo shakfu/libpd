@@ -465,32 +465,6 @@ struct PyCallBack_pd_PdBase : public pd::PdBase {
 		}
 		return PdBase::sendSysRealTime(a0, a1);
 	}
-	bool readArray(const std::string & a0, class std::vector<float, class std::allocator<float> > & a1, int a2, int a3) override {
-		pybind11::gil_scoped_acquire gil;
-		pybind11::function overload = pybind11::get_overload(static_cast<const pd::PdBase *>(this), "readArray");
-		if (overload) {
-			auto o = overload.operator()<pybind11::return_value_policy::reference>(a0, a1, a2, a3);
-			if (pybind11::detail::cast_is_temporary_value_reference<bool>::value) {
-				static pybind11::detail::override_caster_t<bool> caster;
-				return pybind11::detail::cast_ref<bool>(std::move(o), caster);
-			}
-			else return pybind11::detail::cast_safe<bool>(std::move(o));
-		}
-		return PdBase::readArray(a0, a1, a2, a3);
-	}
-	bool writeArray(const std::string & a0, class std::vector<float, class std::allocator<float> > & a1, int a2, int a3) override {
-		pybind11::gil_scoped_acquire gil;
-		pybind11::function overload = pybind11::get_overload(static_cast<const pd::PdBase *>(this), "writeArray");
-		if (overload) {
-			auto o = overload.operator()<pybind11::return_value_policy::reference>(a0, a1, a2, a3);
-			if (pybind11::detail::cast_is_temporary_value_reference<bool>::value) {
-				static pybind11::detail::override_caster_t<bool> caster;
-				return pybind11::detail::cast_ref<bool>(std::move(o), caster);
-			}
-			else return pybind11::detail::cast_safe<bool>(std::move(o));
-		}
-		return PdBase::writeArray(a0, a1, a2, a3);
-	}
 	void clearArray(const std::string & a0, int a1) override {
 		pybind11::gil_scoped_acquire gil;
 		pybind11::function overload = pybind11::get_overload(static_cast<const pd::PdBase *>(this), "clearArray");
@@ -559,12 +533,6 @@ void bind_PdBase(std::function< pybind11::module &(std::string const &namespace_
 		cl.def("isMessageInProgress", (bool (pd::PdBase::*)()) &pd::PdBase::isMessageInProgress, "is a message or byte stream currently in progress?\n\nC++: pd::PdBase::isMessageInProgress() --> bool");
 		cl.def("arraySize", (int (pd::PdBase::*)(const std::string &)) &pd::PdBase::arraySize, "get the size of a pd array\n returns 0 if array not found\n\nC++: pd::PdBase::arraySize(const std::string &) --> int", pybind11::arg("name"));
 		cl.def("resizeArray", (bool (pd::PdBase::*)(const std::string &, long)) &pd::PdBase::resizeArray, "(re)size a pd array\n sizes <= 0 are clipped to 1\n returns true on success, false on failure\n\nC++: pd::PdBase::resizeArray(const std::string &, long) --> bool", pybind11::arg("name"), pybind11::arg("size"));
-		cl.def("readArray", [](pd::PdBase &o, const std::string & a0, class std::vector<float, class std::allocator<float> > & a1) -> bool { return o.readArray(a0, a1); }, "", pybind11::arg("name"), pybind11::arg("dest"));
-		cl.def("readArray", [](pd::PdBase &o, const std::string & a0, class std::vector<float, class std::allocator<float> > & a1, int const & a2) -> bool { return o.readArray(a0, a1, a2); }, "", pybind11::arg("name"), pybind11::arg("dest"), pybind11::arg("readLen"));
-		cl.def("readArray", (bool (pd::PdBase::*)(const std::string &, class std::vector<float, class std::allocator<float> > &, int, int)) &pd::PdBase::readArray, "read from a pd array\n\n resizes given vector to readLen, checks readLen and offset\n\n returns true on success, false on failure\n\n calling without setting readLen and offset reads the whole array:\n\n vector<float> array1;\n readArray(\"array1\", array1);\n\nC++: pd::PdBase::readArray(const std::string &, class std::vector<float, class std::allocator<float> > &, int, int) --> bool", pybind11::arg("name"), pybind11::arg("dest"), pybind11::arg("readLen"), pybind11::arg("offset"));
-		cl.def("writeArray", [](pd::PdBase &o, const std::string & a0, class std::vector<float, class std::allocator<float> > & a1) -> bool { return o.writeArray(a0, a1); }, "", pybind11::arg("name"), pybind11::arg("source"));
-		cl.def("writeArray", [](pd::PdBase &o, const std::string & a0, class std::vector<float, class std::allocator<float> > & a1, int const & a2) -> bool { return o.writeArray(a0, a1, a2); }, "", pybind11::arg("name"), pybind11::arg("source"), pybind11::arg("writeLen"));
-		cl.def("writeArray", (bool (pd::PdBase::*)(const std::string &, class std::vector<float, class std::allocator<float> > &, int, int)) &pd::PdBase::writeArray, "write to a pd array\n\n calling without setting writeLen and offset writes the whole array:\n\n writeArray(\"array1\", array1);\n\nC++: pd::PdBase::writeArray(const std::string &, class std::vector<float, class std::allocator<float> > &, int, int) --> bool", pybind11::arg("name"), pybind11::arg("source"), pybind11::arg("writeLen"), pybind11::arg("offset"));
 		cl.def("clearArray", [](pd::PdBase &o, const std::string & a0) -> void { return o.clearArray(a0); }, "", pybind11::arg("name"));
 		cl.def("clearArray", (void (pd::PdBase::*)(const std::string &, int)) &pd::PdBase::clearArray, "clear array and set to a specific value\n\nC++: pd::PdBase::clearArray(const std::string &, int) --> void", pybind11::arg("name"), pybind11::arg("value"));
 		cl.def("isInited", (bool (pd::PdBase::*)()) &pd::PdBase::isInited, "has the global pd instance been initialized?\n\nC++: pd::PdBase::isInited() --> bool");

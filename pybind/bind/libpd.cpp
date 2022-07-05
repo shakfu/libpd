@@ -9,7 +9,6 @@
 
 typedef std::function< pybind11::module & (std::string const &) > ModuleGetter;
 
-// void bind_std_vector(std::function< pybind11::module &(std::string const &namespace_) > &M);
 void bind_PdTypes(std::function< pybind11::module &(std::string const &namespace_) > &M);
 void bind_PdBase(std::function< pybind11::module &(std::string const &namespace_) > &M);
 
@@ -42,7 +41,6 @@ PYBIND11_MODULE(libpd, root_module) {
 
 	//pybind11::class_<std::shared_ptr<void>>(M(""), "_encapsulated_data_");
 
-	// bind_std_vector(M);
 	bind_PdTypes(M);
 	bind_PdBase(M);
 
