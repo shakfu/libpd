@@ -11,7 +11,7 @@ CONFIG_FILE=config.txt
 NAMESPACE_TO_BIND=pd
 NAMESPACE_TO_SKIP=''
 
-all: build
+all: regen build
 
 bind:
 	@mkdir -p bind

@@ -27,8 +27,8 @@ DEFINE_MACROS = [
     ('HAVE_LIBDL', 1),
     ('USEAPI_DUMMY', 1),
     ('LIBPD_EXTRA', 1),
+    ('PDTHREADS', 1),    # compile with per-thread storage for global variables, required for multi-instance support
     # ('PDINSTANCE', 1),   # compile with multi-instance support
-    # ('PDTHREADS', 1),    # compile with per-thread storage for global variables, required for multi-instance support
     # ('PD_FLOATSIZE', 1), # set the float precision, 32 (default) or 64, ex. `PD_FLOATSIZE=64`
 ]
 
@@ -64,7 +64,8 @@ EXTRA_OBJECTS = [
 #     ['bind/std/vector.cpp']
 # )
 
-SOURCES = sorted(glob("bind/*.cpp"))
+# SOURCES = sorted(glob("bind/*.cpp"))
+SOURCES = sorted(glob("src/*.cpp"))
 
 LIBPD_EXTENSION = Pybind11Extension("libpd",
     SOURCES,  # Sort source files for reproducibility

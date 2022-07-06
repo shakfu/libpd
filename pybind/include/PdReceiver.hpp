@@ -16,7 +16,7 @@
 #ifndef PD_RECEIVER_HPP
 #define PD_RECEIVER_HPP
 
-#include "PdTypes.hpp"
+#include <PdTypes.hpp>
 
 namespace pd {
 

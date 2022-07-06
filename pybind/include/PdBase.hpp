@@ -15,15 +15,15 @@
 #ifndef PD_BASE_HPP
 #define PD_BASE_HPP
 
-#include "z_libpd.h"
-#include "z_queued.h"
-#include "z_print_util.h"
+#include <z_libpd.h>
+#include <z_queued.h>
+#include <z_print_util.h>
 
-#include <map>  
+#include <map>
 
-#include "PdTypes.hpp"
-#include "PdReceiver.hpp"
-#include "PdMidiReceiver.hpp"
+#include <PdTypes.hpp>
+#include <PdReceiver.hpp>
+#include <PdMidiReceiver.hpp>
 
 // needed for libpd audio passing
 #ifndef USEAPI_DUMMY
