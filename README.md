@@ -3,7 +3,7 @@ libpd
 
 [Pure Data](http://puredata.info) as an embeddable audio synthesis library
 
-Copyright (c) Peter Brinkmann & the libpd team 2010-2021
+Copyright (c) Peter Brinkmann & the libpd team 2010-2022
 
 Documentation
 -------------
@@ -155,7 +155,7 @@ By building with the `FAT_LIB=true` Makefile option, libpd will be compiled with
 
 To override autodetection, specify the `-arch` flags directly using the `FAT_ARCHS` Makefile option:
 
-        make FAT_LIB=true FAT_ARCHS="-arch i386 -arch x86_64"
+    make FAT_LIB=true FAT_ARCHS="-arch i386 -arch x86_64"
 
 ### Windows
 
@@ -204,12 +204,39 @@ To double-check your build, the following will print a 1 if double-precision sup
 printf("double-precision %d\n", (int)(sizeof(t_float)/8));
 ```
 
+Loading Externals
+-----------------
+
+Libpd can load pre-compiled dynamic libraries of external objects in the same manner as desktop Pd if it is compiled with the `-ldl` LDFLAG. This is done by default in the Makefile. The main difference is that libpd does not inherit the same search paths by default, so paths outside of those specified by the loading patch with `[declare]` objects need to be added via libpd's "add to search path" function.
+
+### Multi-Instance Compatibility
+
+If libpd is compiled with multi-instance support via `make MULIT=true` and `-DPDINSTANCE -DPDTHREADS` are defined, it may have trouble loading dynamic externals which are compiled without them:
+
+```
+vbap.pd_linux: vbap.pd_linux: undefined symbol: pd_this
+ vbap
+... couldn't create
+```
+
+In this case, the vbap external needs to be recompiled with the `-DPDINSTANCE -DPDTHREADS` CFLAGS defined to add multi-instance support to match.
+
 C++
 ---
 
 The C++ wrapper is inspired by the Java wrapper and provides a PdBase class as well as listener, list, and message type classes. This is a header only library so you only need to include the `cpp` directory in your project. You also may need to add `libpd_wrapper/util` to you include paths.
 
 Sample programs are found in `samples/cpp`.
+
+### Multiple Instance Support
+
+By default, PdBase always wraps to the single main libpd instance, so it is recommended to only use one instance of PdBase.
+
+If `PDINSTANCE` is defined, each PdBase will wrap a separate libpd instance.
+
+To enable multiple instance support:
+* Build libpd with `make MULTI=true` or with CFLAGS `-DPDINSTANCE -DPDTHREADS`
+* Build the C++ program using PdBase.hpp with CPPFLAGS `-DPDINSTANCE`
 
 C\#
 --
@@ -481,7 +508,7 @@ Windows / MSVC:
 
 ### Limitations
 
-Currently the CMake script is not capable of building the C# or the Java bindings. Please use the makefile for that.      
+Currently the CMake script is not capable of building the C# or the Java bindings. Please use the makefile for that.     
 
 Known Issues
 ------------
