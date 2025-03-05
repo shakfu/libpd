@@ -1,6 +1,6 @@
 Pod::Spec.new do |spec|
   spec.name = 'libpd'
-  spec.version = '0.13.2'
+  spec.version = '0.14.1'
 
   spec.license = { :type => 'Standard Improved BSD License', :file => 'License.txt' }
 
@@ -34,11 +34,15 @@ Pod::Spec.new do |spec|
 
   spec.public_header_files = 'objc/**/*.{h}'
 
-  spec.ios.deployment_target = '9.0'
-  spec.macos.deployment_target = '10.10'
+  spec.ios.deployment_target = '11.0'
+  spec.macos.deployment_target = '10.13'
 
   spec.requires_arc = true
-  spec.compiler_flags = '-DPD', '-DUSEAPI_DUMMY', '-DHAVE_UNISTD_H', '-DLIBPD_EXTRA', '-fcommon'
+  spec.compiler_flags = '-DPD', '-DUSEAPI_DUMMY', '-DPD_INTERNAL',
+                        '-DHAVE_UNISTD_H', '-DHAVE_ALLOCA_H',
+                        '-DHAVE_MACHINE_ENDIAN_H', '-D_DARWIN_C_SOURCE',
+                        '-D_DARWIN_UNLIMITED_SELECT', '-DFD_SETSIZE=10240',
+                        '-DLIBPD_EXTRA', '-fcommon'
   spec.frameworks = 'Foundation'
 
   # frameworks for ios-only audio implementation
@@ -85,7 +89,8 @@ Pod::Spec.new do |spec|
                        'pure-data/src/z_hooks.h',
                        'pure-data/src/s_libpdmidi.c',
                        'pure-data/src/z_libpd.c',
-                       'pure-data/src/z_libpd.h'
+                       'pure-data/src/z_libpd.h',
+                       'pure-data/src/m_dispatch_gen.c',
 
   # exclude ios-only audio implementation
   spec.macos.exclude_files = 'objc/PdAudioController.*{h,m}',
